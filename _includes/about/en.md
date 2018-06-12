@@ -1,8 +1,8 @@
 ﻿
 
-> Yet another man.
+> There is no absolute security system.
 
 
-Hi, I am *@Chris* (Huang, Xuan), a software engineer & a designer. 
+Hi, I am *@Chris* , a software engineer & a "hacker". 
 
 
