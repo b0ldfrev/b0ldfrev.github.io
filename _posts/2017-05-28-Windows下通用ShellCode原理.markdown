@@ -3,10 +3,11 @@ layout:     post
 title:      "Windows下通用ShellCode原理"
 subtitle:   "基于GetProcAddress的ShellCode编写"
 date:       2017-05-28 12:00:00
+author:     "Chris"
 catalog: true
 tags:
-    - Windwos
     - ShellCode
+    - Windows
     - PE
     - 病毒分析
  
@@ -15,12 +16,12 @@ tags:
 
 >用 C 汇编实现，编译环境vc6.0, 实测 Win all x32 x64 系统可行
 
-##  0x00 原理简述
+## 0x00 原理简述
 
 * 利用fs寄存器，找到TEB的地址->PEB的地址。PEB的0xC偏移处为一个指向PEB\_LDR\_DATA结构体的指针Ldr，PEB\_LDR\_DATA的0xC的偏移处为一个指向LIST\_ENTRY结构体的指针InLoadOrderModuleList，这是一个按加载顺序构成的双向模块链表。同时LIST\_ENTRY的父结构体为LDR\_DATA\_TABLE\_ENTRY，该结构体里有俩有用信息->0x18  DLLBase(模块基址), ->0x2c  BaseDllName(指向UNICODE_STRING结构体 模块名字为unicode类型）   
 * 利用上述InLoadOrderModuleList双向链表查找kernel32.dll加载到内存的位置，找到其导出表，定位kernel32.dll导出的GetProcAddress函数，使用GetProcAddress函数获取LoadLibrary的函数地址，使用LoadLibrary函数加载user32.dll动态链接库，获取user32.dll中MessageBox的函数地址,调用MessageBox函数。
 
-##  0x01 代码实现
+## 0x01 代码实现
 
 1, 分别为GetProcAddress，MessageBox(演示)，Loadlibrary 定义函数指针
 
@@ -137,7 +138,7 @@ tags:
 	pMessageBox(NULL,szContent,szTitle,0);
 
 ## 0x02 运行结果
-这里Hello World弹窗仅供测试，要实现更多的功能的话还需要你自己去挖掘噢 ![0][pic2]
+这里Hello World弹窗仅供测试 ![0][pic2]要实现更多的功能的话还需要你自己去挖掘噢 
 
 
   ![0][pic1]
