@@ -5,10 +5,10 @@ subtitle:   "基于GetProcAddress的ShellCode编写"
 date:       2017-10-28 12:00:00
 author:     "Chris"
 tags:
-    -ShellCode
-    -Windwos
-	-PE
-	-病毒分析
+    - ShellCode
+    - Windwos
+	- PE
+	- 病毒分析
 
 ---
 >用 C 汇编实现，编译环境vc6.0, 实测 Win all x32 x64 系统可行

@@ -1,4 +1,4 @@
-﻿---
+---
 layout:     post
 title:      "Hello 2015"
 subtitle:   " \"Hello World\""
