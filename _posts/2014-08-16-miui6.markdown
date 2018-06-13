@@ -1,12 +1,10 @@
-﻿---
+---
 layout:     post
 title:      "缓冲区溢出"
 date:       2014-08-16 12:00:00
 author:     "Chris"
 tags:
     - pwn
-    - pwn1
-
 
 ---
 

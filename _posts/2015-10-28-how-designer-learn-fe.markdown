@@ -1,4 +1,4 @@
-﻿---
+---
 layout:     post
 title:      "网络工程师如何学习安全？"
 subtitle:   "How designers learn front-end development?"
@@ -8,8 +8,8 @@ header-img: "img/home-bg-o.jpg"
 tags:
     -pwn
     -reverse
-    - web
-    - unix
+    -web
+    -unix
 ---
 
 > 这篇文章转载自[我在知乎上的回答](https://www.zhihu.com/question/21921588/answer/69680480)，也被刊登于[优秀网页设计](http://www.uisdc.com/head-first-front-end)等多个网站上 ;)
