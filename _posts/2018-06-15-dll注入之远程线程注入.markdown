@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "dll注入之远程线程注入"
+title:      "Dll注入之远程线程注入"
 subtitle:   " \"CreateRemoteThread\""
 date:       2018-06-15 12:00:00
 author:     "Chris"
@@ -12,7 +12,7 @@ tags:
 ---
 
 ## 0x00 原理简介
-基本思路就是让远程进程载入一个我们的dll，这样我们只要在dll里面写入相关代码，基本就可以为所欲为了。但问题是远程进程显然不可能自己调用LoadLibrary来加载我们的dll，我们就要想办法“让”它来调用。我们用CreateRemoteThread函数在远程进程中创建一个线程，线程函数的地址设为LoadLibrary的地址，线程函数参数设为“Mydll.dll”。即让远程进程调用LoadLibrary载入我们的dll，DllMain函数第二个参数ul_reason_for_call
+基本思路就是让远程进程载入一个我们的dll，这样我们只要在dll里面写入相关代码，基本就可以为所欲为了。但问题是远程进程显然不可能自己调用LoadLibrary来加载我们的dll，我们就要想办法“让”它来调用。我们用CreateRemoteThread函数在远程进程中创建一个线程，线程函数的地址设为LoadLibrary的地址，线程函数参数设为“Mydll.dll”。即让远程进程调用LoadLibrary载入我们的dll，dll的主函数DllMain第二个参数ul_reason_for_call
 为调用原因。通过远程线程加载dll时，是以DLL_PROCESS_ATTACH方式加载，所以在dll的case DLL_PROCESS_ATTACH:下写上你要执行的代码。
 
 这里介绍几个需要的API：
@@ -159,9 +159,10 @@ tags:
 
 ## 0x02 运行结果
 * 测试环境为win10
-* 目标进程为看雪入门crackme
+* 实验程序为[crackme.exe](https://github.com/yxshyj/project/blob/master/other/crackme.exe)
 * Mydll功能就一个弹窗
-* 
+
+
 ![pic1]
 
 ![pic2]
