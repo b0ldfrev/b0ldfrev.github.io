@@ -213,8 +213,8 @@ IAT（Import Address Table，输入地址表）：当PE文件装入的时候，W
 
 
 ## 0x03实验结果
-* 实验环境win10
-* 对象程序[crackme.exe](https://github.com/yxshyj/project/blob/master/other/crackme.exe)
+* 实验环境: win10
+* 对象程序: [crackme.exe](https://github.com/yxshyj/project/blob/master/other/crackme.exe)
 
 单击程序Help的Register,随便输入注册账号和密码
 

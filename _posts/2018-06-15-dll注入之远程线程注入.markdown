@@ -158,8 +158,9 @@ tags:
 	}
 
 ## 0x02 运行结果
-* 测试环境为win10
+* 测试环境为win10 x64
 * 实验程序为[crackme.exe](https://github.com/yxshyj/project/blob/master/other/crackme.exe)
+* 测试工具为火绒剑
 * Mydll功能就一个弹窗
 
 
