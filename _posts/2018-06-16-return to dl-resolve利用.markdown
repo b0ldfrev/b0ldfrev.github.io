@@ -12,7 +12,7 @@ tags:
 ---
 ## 0x00 漏洞分析
 
-检查保护
+检查保护-NX被启用
 
 	root@kali:~# checksec stackba
 	[*] '/root/stackba'
@@ -21,7 +21,8 @@ tags:
 	    Stack:    No canary found
 	    NX:       NX enabled
 	    PIE:      No PIE (0x8048000)
-NX被启用
+
+
 
 main函数
 
