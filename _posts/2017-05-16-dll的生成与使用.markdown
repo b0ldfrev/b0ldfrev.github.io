@@ -6,6 +6,7 @@ author:     "Chris"
 catalog: true
 tags:
     - Windows
+    - 笔记
  
 ---
 
