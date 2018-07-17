@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "2018铁三个人赛样题writeup"
-subtitle:   " \"x64 Rop\""
+subtitle:   " \"覆写got表\""
 date:       2018-02-12 12:00:00
 author:     "Chris"
 catalog: true
