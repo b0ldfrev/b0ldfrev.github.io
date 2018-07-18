@@ -25,7 +25,7 @@ x86中参数都是保存在栈上,但在x64中前六个参数依次保存在RDI,
 
 	.text:000000000040089A                 pop     rbx  必须为0
 	.text:000000000040089B                 pop     rbp  必须为1
-	.text:000000000040089C                 pop     r12  call !
+	.text:000000000040089C                 pop     r12  call（由于下面call指令的寻址方式为间接寻址，所以此处应为got表地址） 
 	.text:000000000040089E                 pop     r13  arg3
 	.text:00000000004008A0                 pop     r14  arg2
 	.text:00000000004008A2                 pop     r15  arg1
@@ -36,7 +36,7 @@ x86中参数都是保存在栈上,但在x64中前六个参数依次保存在RDI,
 	.text:0000000000400880                 mov     rdx, r13
 	.text:0000000000400883                 mov     rsi, r14
 	.text:0000000000400886                 mov     edi, r15
-	.text:0000000000400889                 call    qword ptr [r12+rbx*8] call !
+	.text:0000000000400889                 call    qword ptr [r12+rbx*8] call 
 	.text:000000000040088D                 add     rbx, 1
 	.text:0000000000400891                 cmp     rbx, rbp
 	.text:0000000000400894                 jnz     short loc_400880
