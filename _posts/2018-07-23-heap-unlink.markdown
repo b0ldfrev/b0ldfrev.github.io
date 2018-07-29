@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "heap-unlink"
-subtitle:   " leak+unlink 利用"
+subtitle:   " DynELF+unlink 利用"
 date:       2018-07-23 12:00:00
 author:     "Chris"
 catalog: true
