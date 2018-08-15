@@ -218,7 +218,7 @@ tags:
 				mov eax,[eax]
 				mov pPLD,eax 
 		}
-		//遍历找到kernel32.dll
+		// #遍历找到kernel32.dll
 		while(pPLD!=pBeg)
 		{
 			pLast=(WORD*)pPLD->BaseDllName.Buffer;
@@ -233,7 +233,7 @@ tags:
 			pPLD=(LDR_DATA_TABLE_ENTRY*)pPLD->InLoadOrderModuleList.Flink;
 		}
 		
-		//遍历kernel32.dll的导出表，找到GetProcAddr函数地址
+		// #遍历kernel32.dll的导出表，找到GetProcAddr函数地址
 		
 		IMAGE_DOS_HEADER *pIDH=(IMAGE_DOS_HEADER *)dwKernelBase; 
 		IMAGE_NT_HEADERS *pINGS=(IMAGE_NT_HEADERS *)((DWORD)dwKernelBase+pIDH->e_lfanew);
@@ -259,11 +259,11 @@ tags:
 			}
 			pSrc=szGetProcAddr;
 		}
-		//有了GetProcAddr 可以获得任何api
+		// #有了GetProcAddr 可以获得任何api
 		pLoadLibrary=(PLOADLIBRARY)pGetProcAddress((HMODULE)dwKernelBase,szLoadLibrary);
 		pMessageBox=(PMESSAGEBOX)pGetProcAddress(pLoadLibrary(szUser32),szMessageBox);
 		
-		//使用函数
+		// #使用函数
 		char szTitle[]={'S','h','e','l','l','C','o','d','e',0};
 		char szContent[]={0x48,0x65,0x6c,0x6c,0x6f,0x20,0x57,0x6f,0x72,0x6c,0x64,0x20,0x21,0};
 		pMessageBox(NULL,szContent,szTitle,0);

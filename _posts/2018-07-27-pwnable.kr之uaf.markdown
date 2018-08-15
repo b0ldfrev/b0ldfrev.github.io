@@ -131,25 +131,25 @@ tags:
 	mov     rdi, rax
 	;   try {
 	call    __ZNSsC1EPKcRKSaIcE ; std::string::string(char const*,std::allocator<char> const&)
-	;   } // starts at 400EF2
+	;   }   #starts at 400EF2
 	lea     r12, [rbp+var_50]
 	mov     edi, 18h        ; unsigned __int64
 	;   try {
 	call    __Znwm          ;          operator new(ulong)
-	;   } // starts at 400F00
+	;   }   #starts at 400F00
 	mov     rbx, rax
 	mov     edx, 19h
 	mov     rsi, r12
 	mov     rdi, rbx
 	;   try {
 	call    _ZN3ManC2ESsi   ;          Man::Man(std::string,int)
-	;   } // starts at 400F13
+	;   }   #starts at 400F13
 	mov     [rbp+var_38], rbx
 	lea     rax, [rbp+var_50]
 	mov     rdi, rax        ; this
 	;   try {
 	call    __ZNSsD1Ev      ; std::string::~string()
-	;   } // starts at 400F23
+	;   }   #starts at 400F23
 	lea     rax, [rbp+var_12]
 	mov     rdi, rax
 	call    __ZNSaIcED1Ev   ; std::allocator<char>::~allocator()
@@ -158,9 +158,9 @@ tags:
 
 
 
-在 **call Znwm ;  // operator new(ulong)** 分配好了堆内存，从**mov edi, 18h** 看出 分配的大小为0x18字节
+在 **call Znwm ;    #operator new(ulong)** 分配好了堆内存，从**mov edi, 18h** 看出 分配的大小为0x18字节
 
-在 **call  ZN3ManC2ESsi  ; // Man::Man(std::string,int)** 调用构造函数，执行完这一步之后我们去看看为m分配好的堆空间：
+在 **call  ZN3ManC2ESsi  ;   #Man::Man(std::string,int)** 调用构造函数，执行完这一步之后我们去看看为m分配好的堆空间：
 
 	pwndbg> x/3xg $rax
 	0x12f9040:	0x0000000000401570	0x0000000000000019

@@ -25,7 +25,7 @@ IDA伪代码
 
 	ssize_t sub_8048484()
 	{
-	  char buf; // [esp+1Ch] [ebp-6Ch]
+	  char buf;   #[esp+1Ch] [ebp-6Ch]
 	
 	  setbuf(stdin, &buf);
 	  return read(0, &buf, 0x100u);
@@ -33,13 +33,13 @@ IDA伪代码
 
 	int __cdecl main()
 	{
-	  int buf; // [esp+2Ch] [ebp-6Ch]
-	  int v2; // [esp+30h] [ebp-68h]
-	  int v3; // [esp+34h] [ebp-64h]
-	  int v4; // [esp+38h] [ebp-60h]
-	  int v5; // [esp+3Ch] [ebp-5Ch]
-	  int v6; // [esp+40h] [ebp-58h]
-	  int v7; // [esp+44h] [ebp-54h]
+	  int buf;   #[esp+2Ch] [ebp-6Ch]
+	  int v2;   #[esp+30h] [ebp-68h]
+	  int v3;   #[esp+34h] [ebp-64h]
+	  int v4;   #[esp+38h] [ebp-60h]
+	  int v5;   #[esp+3Ch] [ebp-5Ch]
+	  int v6;   #[esp+40h] [ebp-58h]
+	  int v7;   #[esp+44h] [ebp-54h]
 	
 	  buf = 1668048215;
 	  v2 = 543518063;
@@ -76,7 +76,7 @@ IDA伪代码
 	.text:080484B7                 call    _read
 	.text:080484BC                 leave
 	.text:080484BD                 retn
-	.text:080484BD ; } // starts at 8048484
+	.text:080484BD ; }   #starts at 8048484
 	.text:080484BD sub_8048484     endp
 
 明显sub_8048484()里read函数导致buf溢出
@@ -137,7 +137,7 @@ IDA伪代码
 ## 0x03 总结
 
 最开始我在leak函数里面，反复调用sub_8048484()，避免接收 "Welcome to XDCTF2015~!"
-这个字符串，但是发现这样找到system地址返回后调用时可能堆栈出现了点问题，如果要这样用的话可以在找到地址后覆盖main函数以平衡栈空间，再进行下一步。
+这个字符串，但是发现这样找到system地址返回后调用时可能堆栈出现了点问题，如果要这样用的话可以在找到地址后覆盖main函数以平衡栈空间，再进行下一步。更要善于观察栈空间结构。
 
 [文件下载](https://github.com/yxshyj/project/tree/master/pwn/XDCTF2015%E4%B9%8Bpwn200)
 

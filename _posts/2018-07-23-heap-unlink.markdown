@@ -29,7 +29,7 @@ main 函数分析
 
 	void __cdecl main()
 	{
-	  int v0; // [esp+Ch] [ebp-Ch]
+	  int v0;   #[esp+Ch] [ebp-Ch]
 	
 	  v0 = 0;
 	  setbuf(stdout, 0);
@@ -68,9 +68,9 @@ Add 函数分析
 
 	void *sub_80485F7()
 	{
-	  void *result; // eax
-	  int v1; // ebx
-	  size_t size; // [esp+Ch] [ebp-Ch]
+	  void *result;   #eax
+	  int v1;   #ebx
+	  size_t size;   #[esp+Ch] [ebp-Ch]
 	
 	  size = 0;
 	  if ( dword_8049D88 > 9 )
@@ -96,7 +96,7 @@ Set 函数分析
 	
 	ssize_t sub_804867D()
 	{
-	  int v1; // [esp+Ch] [ebp-Ch]
+	  int v1;   #[esp+Ch] [ebp-Ch]
 	
 	  v1 = -1;
 	  write(1, "Set chunk index:", 0x10u);
@@ -113,7 +113,7 @@ Delete 函数分析
 
 	void sub_8048702()
 	{
-	  int v0; // [esp+Ch] [ebp-Ch]
+	  int v0;   #[esp+Ch] [ebp-Ch]
 	
 	  v0 = -1;
 	  write(1, "Delete chunk index:", 0x13u);
@@ -130,8 +130,8 @@ Print 函数分析
 
 		ssize_t sub_804876C()
 		{
-		  ssize_t result; // eax
-		  int v1; // [esp+Ch] [ebp-Ch]
+		  ssize_t result;   #eax
+		  int v1;   #[esp+Ch] [ebp-Ch]
 		
 		  v1 = -1;
 		  write(1, "Print chunk index:", 0x12u);
@@ -164,12 +164,12 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	    if (!prev_inuse(p)) {
 	      prevsize = p->prev_size;
 	size += prevsize;
-	//修改指向当前chunk的指针，指向前一个chunk。
+	  #修改指向当前chunk的指针，指向前一个chunk。
 	      p = chunk_at_offset(p, -((long) prevsize)); 
 	      unlink(p, bck, fwd);
 	}   
 	
-	//相关函数说明：
+	  #相关函数说明：
 	/* Treat space at ptr + offset as a chunk */
 	#define chunk_at_offset(p, s)  ((mchunkptr) (((char *) (p)) + (s))) 
 	
@@ -205,11 +205,11 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	……
 	if (nextchunk != av->top) { 
 	      /* get and clear inuse bit */
-	      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);//判断nextchunk是否为free chunk
+	      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);  #判断nextchunk是否为free chunk
 	      /* consolidate forward */
-	      if (!nextinuse) { //next chunk为free chunk
-	            unlink(nextchunk, bck, fwd); //将nextchunk从链表中移除
-	          size += nextsize; // p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
+	      if (!nextinuse) {   #next chunk为free chunk
+	            unlink(nextchunk, bck, fwd);   #将nextchunk从链表中移除
+	          size += nextsize;   #p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
 	      } else
 	            clear_inuse_bit_at_offset(nextchunk, 0);    
 	
@@ -225,7 +225,7 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	 Place the chunk in unsorted chunk list. Chunks are not placed into regular bins until after they have been given one chance to be used in malloc.
 	*/  
 	
-	bck = unsorted_chunks(av); //获取unsorted bin的第一个chunk
+	bck = unsorted_chunks(av);   #获取unsorted bin的第一个chunk
 	/*
 	  /* The otherwise unindexable 1-bin is used to hold unsorted chunks. */
 	    #define unsorted_chunks(M)          (bin_at (M, 1))
@@ -242,8 +242,8 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	      bck->fd = p;
 	      fwd->bk = p;  
 	
-	      set_head(p, size | PREV_INUSE);//设置当前chunk的size,并将前一个chunk标记为已使用
-	set_foot(p, size);//将后一个chunk的prev_size设置为当前chunk的size
+	      set_head(p, size | PREV_INUSE);  #设置当前chunk的size,并将前一个chunk标记为已使用
+	set_foot(p, size);  #将后一个chunk的prev_size设置为当前chunk的size
 	/*
 	   /* Set size/use field */
 	   #define set_head(p, s)       ((p)->size = (s))
@@ -259,13 +259,13 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 >size大小检测
 
-	// 由于P已经在双向链表中，所以有两个地方记录其大小，所以检查一下其大小是否一致。
+	  #由于P已经在双向链表中，所以有两个地方记录其大小，所以检查一下其大小是否一致。
 	if (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), 0))      \
 	      malloc_printerr ("corrupted size vs. prev_size"); 
 
 >双链表冲突检测
 
-	// 该机制会在执行unlink操作的时候检测链表中前一个chunk的fd与后一个chunk的bk是否都指向当前需要unlink的chunk。这样攻击者就无法替换second chunk的fd与fd了
+	  #该机制会在执行unlink操作的时候检测链表中前一个chunk的fd与后一个chunk的bk是否都指向当前需要unlink的chunk。这样攻击者就无法替换second chunk的fd与fd了
 	if (__builtin_expect (FD->bk != P || BK->fd != P, 0))                      \
 	  malloc_printerr (check_action, "corrupted double-linked list", P, AV);  \
 
@@ -337,11 +337,11 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 由于在 chunk 1 前面构造了一个伪造的空闲内存块，当free(chunk[1])时，就会对伪造的空闲内存块进行unlink操作：
 
-	F = p -> fd;  //F = &buf - 12
-	B = p -> bk;  //B = &buf- 8
+	F = p -> fd;    #F = &buf - 12
+	B = p -> bk;    #B = &buf- 8
 	if (F -> bk == p && B -> fd == p){
-	  F -> bk = B;  // 即buf[0] = B = &buf - 8
-	  B -> fd = F;  // 即buf[0] = F = &buf -12
+	  F -> bk = B;    #即buf[0] = B = &buf - 8
+	  B -> fd = F;    #即buf[0] = F = &buf -12
 	}
 
 从上可知，unlink后，buf[0]存的不再是chunk 0 的起始地址了，而是&buf - 12。此时我们只关心buf数组的内存，其布局如下：

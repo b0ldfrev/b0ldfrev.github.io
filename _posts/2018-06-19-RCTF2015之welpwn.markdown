@@ -25,7 +25,7 @@ IDA代码
 
 	int echo(__int64 a1)
 	{
-	  char s2[16]; // [rsp+10h] [rbp-10h]
+	  char s2[16]; #[rsp+10h] [rbp-10h]
 	
 	  for ( i = 0; *(_BYTE *)(i + a1); ++i )
 	    s2[i] = *(_BYTE *)(i + a1);
@@ -41,7 +41,7 @@ IDA代码
 	
 	int main(int argc, const char **argv, const char **envp)
 	{
-	  char buf; // [rsp+0h] [rbp-400h]
+	  char buf;  #[rsp+0h] [rbp-400h]
 	
 	  alarm(0xAu);
 	  write(1, "Welcome to RCTF\n", 0x10uLL);

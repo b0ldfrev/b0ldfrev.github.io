@@ -80,11 +80,11 @@ addr 存放的是线性地址
 	    DWORD* pPTE;    
 	    DWORD* pNullPTE; 
 		
-	    pNullPTE = (DWORD*)0xc0000000; // 0 地址的 PTE 线性地址
+	    pNullPTE = (DWORD*)0xc0000000; // #0地址的PTE线性地址
 	    
-	    pPTE = (DWORD*)(0xc0000000 + ((0x60000000 >> 9) & 0x7ffff8));   // 目标线性地址的 PTE 线性地址
+	    pPTE = (DWORD*)(0xc0000000 + ((0x60000000 >> 9) & 0x7ffff8));   // #目标线性地址的PTE线性地址
 		
-	    *pNullPTE = *pPTE;  // 为0地址的PTE挂上目标线性地址的 PTE (物理页)
+	    *pNullPTE = *pPTE;  // #为0地址的PTE挂上目标线性地址的PTE(物理页)
 		
 	    __asm {
 	        pop edi
@@ -92,7 +92,7 @@ addr 存放的是线性地址
 				pop ebx
 				mov esp, ebp
 				pop ebp
-				iretd   //注意返回
+				iretd   // #注意返回
 	    }
 	}
 	
@@ -112,7 +112,7 @@ addr 存放的是线性地址
 	    DWORD* addr = (DWORD*)VirtualAlloc((LPVOID)0x60000000, 4, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);  
 	    *addr = (DWORD)str;
 		
-		/*为0x60000000线性地址开辟堆内存，里面存有str的地址*/
+		 #/*为0x60000000线性地址开辟堆内存，里面存有str的地址*/
 		
 	    if (addr ==NULL) {
 	        printf("Error alloc!\n");

@@ -31,7 +31,7 @@ tags:
 
 	int __cdecl main(int argc, const char **argv, const char **envp)
 	{
-	  char yolo[1024]; // [rsp+0h] [rbp-400h]
+	  char yolo[1024];  #[rsp+0h] [rbp-400h]
 	
 	  fgets(yolo, 1337, _bss_start);
 	  return 0;
@@ -42,7 +42,7 @@ tags:
 	   0x4005ca <main>:	    push   rbp
 	   0x4005cb <main+1>:	mov    rbp,rsp
 	   0x4005ce <main+4>:	sub    rsp,0x400
-	   0x4005d5 <main+11>:	mov    rdx,QWORD PTR [rip+0x200a54] # 0x601030<stdin@@GLIBC_2.2.5>
+	   0x4005d5 <main+11>:	mov    rdx,QWORD PTR [rip+0x200a54] #0x601030<stdin@@GLIBC_2.2.5>
 	   0x4005dc <main+18>:	lea    rax,[rbp-0x400]
 	   0x4005e3 <main+25>:	mov    esi,0x539
 	   0x4005e8 <main+30>:	mov    rdi,rax

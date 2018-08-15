@@ -28,9 +28,9 @@ main 函数分析
 
 	void __cdecl __noreturn main()
 	{
-	  int v0; // eax
-	  char buf; // [esp+8h] [ebp-10h]
-	  unsigned int v2; // [esp+Ch] [ebp-Ch]
+	  int v0;  #eax
+	  char buf;   #[esp+8h] [ebp-10h]
+	  unsigned int v2;   #[esp+Ch] [ebp-Ch]
 	
 	  v2 = __readgsdword(0x14u);
 	  setvbuf(stdout, 0, 2, 0);
@@ -75,11 +75,11 @@ Add 函数分析
 
 	unsigned int sub_8048646()
 	{
-	  _DWORD *v0; // ebx
-	  signed int i; // [esp+Ch] [ebp-1Ch]
-	  int size; // [esp+10h] [ebp-18h]
-	  char buf; // [esp+14h] [ebp-14h]
-	  unsigned int v5; // [esp+1Ch] [ebp-Ch]
+	  _DWORD *v0;  #ebx
+	  signed int i;    #[esp+Ch] [ebp-1Ch]
+	  int size;   #[esp+10h] [ebp-18h]
+	  char buf;  #[esp+14h] [ebp-14h]
+	  unsigned int v5;  #[esp+1Ch] [ebp-Ch]
 	
 	  v5 = __readgsdword(0x14u);
 	  if ( dword_804A04C <= 5 )
@@ -125,9 +125,9 @@ Add 函数分析
 
 	struct note{
 	
-	            *func       //指向打印函数0x080462b的指针
+	            *func       #指向打印函数0x080462b的指针
 	
-	            *msg_ptr   //指向note内容的指针
+	            *msg_ptr   #指向note内容的指针
 	
 	}
 
@@ -137,9 +137,9 @@ Delete 函数分析
 
 	unsigned int sub_80487D4()
 	{
-	  int v1; // [esp+4h] [ebp-14h]
-	  char buf; // [esp+8h] [ebp-10h]
-	  unsigned int v3; // [esp+Ch] [ebp-Ch]
+	  int v1; #[esp+4h] [ebp-14h]
+	  char buf; #[esp+8h] [ebp-10h]
+	  unsigned int v3; #[esp+Ch] [ebp-Ch]
 	
 	  v3 = __readgsdword(0x14u);
 	  printf("Index :");
@@ -164,9 +164,9 @@ print 函数分析
 
 	unsigned int sub_80488A5()
 	{
-	  int v1; // [esp+4h] [ebp-14h]
-	  char buf; // [esp+8h] [ebp-10h]
-	  unsigned int v3; // [esp+Ch] [ebp-Ch]
+	  int v1;  #[esp+4h] [ebp-14h]
+	  char buf;  #[esp+8h] [ebp-10h]
+	  unsigned int v3;  #[esp+Ch] [ebp-Ch]
 	
 	  v3 = __readgsdword(0x14u);
 	  printf("Index :");
