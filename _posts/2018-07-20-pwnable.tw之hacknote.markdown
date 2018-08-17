@@ -73,7 +73,7 @@ main 函数分析
 
 Add 函数分析
 
-    # -*- coding: utf-8 -*-
+    
 	unsigned int sub_8048646()
 	{
 	  _DWORD *v0;  #ebx
@@ -123,7 +123,7 @@ Add 函数分析
 
 这里分析出来一个结构体
 
-
+    # -*- coding: utf-8 -*-
 	struct note{
 	
 	            *func       #指向打印函数0x080462b的指针
