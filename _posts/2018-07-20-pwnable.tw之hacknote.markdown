@@ -73,6 +73,7 @@ main 函数分析
 
 Add 函数分析
 
+    # -*- coding: utf-8 -*-
 	unsigned int sub_8048646()
 	{
 	  _DWORD *v0;  #ebx
