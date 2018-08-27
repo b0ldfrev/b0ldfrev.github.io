@@ -68,11 +68,11 @@ tags:
 	gdb-peda$ pattern offset DAn;An)AnEAnaAn0AnFA
 	found at offset: 1032
 
-2.覆盖ret返回到**0x4005d5 <main+11>:  mov    rdx,QWORD PTR [rip+0x200a54]**
+2.覆盖rbp为`bss+0x400`，覆盖ret返回到`0x4005d5 <main+11>:  mov    rdx,QWORD PTR [rip+0x200a54]`
 
-因为push rbp将rbp压入栈，所以覆盖栈中的rbp为(bss+0x400)，为什么要这样覆盖？第一个buf参数为rbp-0x400，第二次执行fgets时要向bss段首写入shellcode，所以要将bss段地址加上0x400
+因为`push rbp`将`rbp`压入栈，所以覆盖栈中的rbp为(bss+0x400)，为什么要这样覆盖？第一个buf参数为rbp-0x400，第二次执行fgets时要向bss段首写入shellcode，所以要将bss段地址加上0x400
 
-3.二次执行fgets时，将shellcode写入了bss段首，并继续写入其他数据填满1028个字节，溢出到bss段首执行shellcode，拿下shell
+3.二次执行fgets时，将shellcode写入了bss段首，并继续写入其他数据填满0x400+p64(任意)个字节后填一个bss段首地址.执行到`leave`指令时，rbp=bss+0x400，`leave`可简化为`mov rsp,rbp ; pop rbp`, `mov rsp,rbp`将栈迁移到bss+400,pop一个任意值到rbp，ret到bss段首，执行shellcode，拿下shell
 
 ## 0x02 完整exp
 
