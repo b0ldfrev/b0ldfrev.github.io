@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="网络上免费,小巧的Markdown笔记.内置多标签支持，自动保存，插入图片免上传，屏幕截图粘贴等等，功能丰富，是一个很棒的在线工具." />
+    <meta name="keywords" content="在线markdown编辑器,Markdown笔记,免费markdown记事本,桌面应用,chrome APP,实时预览,github风格, 最好用的markdown编辑器" />
+    <title>Markdown笔记</title> 
+    <link href="components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="components/bootstrap-markdown/css/bootstrap-markdown.min.css" rel="stylesheet">
+    <link href="./css/markdown-notepad.all.css" rel="stylesheet">
+	<link rel="apple-touch-icon" sizes="57x57" href="./img/apple-touch-icon-57x57.png">
+	<link rel="apple-touch-icon" sizes="60x60" href="./img/apple-touch-icon-60x60.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="./img/apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="76x76" href="./img/apple-touch-icon-76x76.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="./img/apple-touch-icon-114x114.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="./img/apple-touch-icon-120x120.png">
+	<link rel="apple-touch-icon" sizes="144x144" href="./img/apple-touch-icon-144x144.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="./img/apple-touch-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="./img/apple-touch-icon-180x180.png">
+	<link rel="icon" type="image/png" href="./img/favicon-32x32.png" sizes="32x32">
+	<link rel="icon" type="image/png" href="./img/android-chrome-192x192.png" sizes="192x192">
+	<link rel="icon" type="image/png" href="./img/favicon-96x96.png" sizes="96x96">
+	<link rel="icon" type="image/png" href="./img/favicon-16x16.png" sizes="16x16">
+  </head>
+  <body>
+	
+    <div class="notes hidden-print" data-locale="zh" data-lbl-localimg="本地图片">
+	  <nav class="navbar navbar-default navbar-fixed-top top-bar">
+        <div class="btn-group btn-group-sm">
+           <button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-option-vertical"></i></button>
+           <ul class="dropdown-menu" role="menu">
+		    
+			  <li><a href="#" title="New&emsp;&emsp;&emsp;Ctlr+T" name="new" data-nts-cmd="new">New&emsp;&emsp;&emsp;Ctlr+T</a></li>
+			
+			  <li><a href="#" title="Open&emsp;&emsp;&emsp;Ctlr+O" name="open" data-nts-cmd="open">Open&emsp;&emsp;&emsp;Ctlr+O</a></li>
+			
+			  <li><a href="#" title="Save&emsp;&emsp;&emsp;Ctlr+S" name="save" data-nts-cmd="save">Save&emsp;&emsp;&emsp;Ctlr+S</a></li>
+			
+			  <li><a href="#" title="Save As..." name="saveas" data-nts-cmd="saveas">Save As...</a></li>
+			
+			  <li><a href="#" title="Rename" name="rename" data-nts-cmd="rename">Rename</a></li>
+			
+			  <li><a href="#" title="Close&emsp;&emsp;&emsp;Ctlr+W" name="close" data-nts-cmd="close">Close&emsp;&emsp;&emsp;Ctlr+W</a></li>
+			
+			  <li><a href="#" title="Close Others" name="closeOthers" data-nts-cmd="closeOthers">Close Others</a></li>
+			
+			  <li><a href="#" title="Close All" name="closeAll" data-nts-cmd="closeAll">Close All</a></li>
+			
+			<li role="separator" class="divider"></li>
+		    
+			  <li><a href="#" title="导出为HTML" name="export" data-nts-cmd="export">导出为HTML</a></li>
+			
+			  <li><a href="#" title="打印...&emsp;&emsp;&emsp;Ctlr+P" name="print" data-nts-cmd="print">打印...&emsp;&emsp;&emsp;Ctlr+P</a></li>
+			
+			<li role="separator" class="divider"></li>
+		    
+			  <li><a href="WELCOME_zh-CN.md" title="欢迎使用" name="welcome">欢迎使用</a></li>
+			
+			  <li><a href="https://raw.githubusercontent.com/riku/Markdown-Syntax-CN/master/syntax.md" title="Markdown语法" name="syntax">Markdown语法</a></li>
+			
+			  <li><a href="ABOUT_zh-CN.md" title="关于" name="about">关于</a></li>
+			
+		   </ul>
+        </div>
+        <div class="btn-group btn-group-sm">
+		  <a class="btn btn-default" title="新建&emsp;Ctlr+T" data-nts-cmd="new"><i class="glyphicon glyphicon-file"></i></a> 
+		  <a class="btn btn-default" title="打开&emsp;Ctlr+O" data-nts-cmd="open"><i class="glyphicon glyphicon-folder-open"></i></a> 
+		  <a class="btn btn-default" title="保存&emsp;Ctrl+S" data-nts-cmd="save"><i class="glyphicon glyphicon-floppy-disk"></i></a>
+		  
+		  <a class="btn btn-default" title="另存为..." data-nts-cmd="saveas"><i class="glyphicon glyphicon-floppy-open"></i></a>
+		  
+		  <a class="btn btn-default" title="打印...&emsp;Ctrl+P" data-nts-cmd="print"><i class="glyphicon glyphicon-print"></i></a>
+		</div>  
+	    <div class="btn-group btn-group-xs pull-right">
+		  
+             <button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><i class="glyphicon glyphicon-globe"></i><span class="caret"></span></button>
+             <ul class="dropdown-menu" role="menu">
+		   
+			<li><a href="index.html" title="English" target="_self">简体中文</a></li>
+			
+			<li><a href="index_EN.html" title="简体中文" target="_self">English</a></li>
+			
+		   </ul>		  
+        </div>
+	  </nav>
+	  <div class="container">
+      <ul class="nav nav-tabs list-inline notes-tab">
+        <li><a href="#" title="新建标签&emsp;Ctlr+T"><i class="glyphicon glyphicon-plus"></i></a></li>
+      </ul>      
+	  <div class="dropdown clearfix notes-tab-menu">
+	    <ul class="dropdown-menu center-block">
+	      <li><a data-nts-cmd="close" href="#">关闭&emsp;&emsp;Ctlr+W</a></li>
+	      <li><a data-nts-cmd="closeOthers" href="#">关闭其他</a></li>
+	      <li><a data-nts-cmd="closeAll" href="#">关闭全部</a></li>
+	      <li><a data-nts-cmd="rename" href="#">重命名</a></li>
+	    </ul>
+	  </div>
+      <textarea placeholder="开始Markdown"></textarea>
+	  </div>
+	</div>
+	<div class="modal fade" id="myMsgBox" tabindex="-1" role="dialog" data-locales="警告,确定,输入">
+	  <div class="modal-dialog modal-sm" role="document">
+		<div class="modal-content">
+		  <div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			<h4 class="modal-title"></h4>
+		  </div>
+		  <div class="modal-body">
+		  <p class="text-danger"></p>
+		  <div class="form-group hidden">
+            <label for="__prompt" class="control-label"></label>
+            <input type="text" class="form-control" id="__prompt">
+          </div>
+		  </div>
+		  <div class="modal-footer">
+			<button type="button" class="btn btn-primary" data-which="1" data-dismiss="modal">是</button>
+			<button type="button" class="btn btn-danger" data-which="-1" data-dismiss="modal">否</button>
+			<button type="button" class="btn btn-default" data-which="0" data-dismiss="modal">取消</button>
+		  </div>
+		</div>
+	  </div>
+	</div>
+	<div class="notes-print md-preview visible-print-block">
+	</div>
+    <script src="components/jquery/dist/jquery.min.js"></script>
+    <script src="components/bootstrap/dist/js/bootstrap.min.js"></script>
+	<script src="components/showdown/dist/showdown.min.js"></script>
+	<script src="components/bootstrap-markdown/js/bootstrap-markdown.js"></script>
+	<script src="components/bootstrap-markdown/locale/bootstrap-markdown.zh.js"></script>
+	<script src="js/markdown-notepad.all.js" type="text/javascript"></script>
+    <!--
+    <script src="js/bootstrap-msgbox.js" type="text/javascript"></script>
+    <script src="js/bootstrap-notes-tab.js" type="text/javascript"></script>
+    <script src="js/bootstrap-notes.js" type="text/javascript"></script>
+    <script src="js/bootstrap-notes-adapter.js" type="text/javascript"></script>
+    <script src="js/markdown-notepad.js" type="text/javascript"></script>
+    -->
+  </body>
+</html>
