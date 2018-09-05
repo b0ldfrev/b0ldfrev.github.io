@@ -22,6 +22,7 @@ tags:
 	    Stack:    No canary found
 	    NX:       NX enabled
 	    PIE:      No PIE (0x8048000)
+
  只开了NX
 
 2，使用IDA分析程序流程
