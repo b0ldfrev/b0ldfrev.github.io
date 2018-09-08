@@ -26,7 +26,7 @@ tags:
 
 2，使用IDA分析程序流程
 
-### main 函数分析
+#### main 函数分析
 
 	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
 	{
@@ -67,13 +67,13 @@ tags:
 	2.change
 	3.release
 
-### new 函数分析 
+#### new 函数分析 
 
 ![pic1]
 
 0x68 Fastbin的chunk，应该与fastbin_attack有关
 
-### change 函数分析
+#### change 函数分析
 
 ![pic2]
 
@@ -102,7 +102,7 @@ tags:
 
 经分析，它是逐字节读入，且无溢出
 
-### release 函数分析
+#### release 函数分析
 
 ![pic3]
 
