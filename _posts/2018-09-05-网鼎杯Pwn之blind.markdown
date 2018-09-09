@@ -110,13 +110,12 @@ tags:
 
 ## 0x01 漏洞分析
 
-明显的UAF，改chunk的fd实现任意地址写；看了大佬们的writeup才知道，原来bss段存在 stdin，stderr，stdout等`_IO_FILE`结构体的指针，感觉很奇怪。。。。。
+明显的UAF，改chunk的fd实现任意地址写；看了大佬们的writeup才知道，bss段存在 stdin，stderr，stdout等`_IO_FILE`结构体的指针，且在&ptr地址上面，任意地址写的话，就往ptr里面以0x68为间隔，写连续的mem空间地址，以便在bss段伪造`_IO_FILE`结构与`vtable`结构。然后还要往bss段首，也就是`FILE *stdout`指针的地方写入伪造的FILE结构地址，修改文件流的指针，使其指向伪造的`_IO_FILE`结构体。
 
 ![pic4]
 
-GDB也识别出来这是3 stdin，stderr，stdout 结构体指针
+在bss段首GDB识别出来这是stdin，stderr，stdout 结构体指针，地址高位的0x7f可错位利用。
 
-正常它们的结构体指针都应该在libc.so中才对，这道题既然都把这些指针放这儿了，那目的就很明显了，肯定得伪造`_IO_FILE`，所以想到的是修改文件流的指针，使其指向伪造的`_IO_FILE`结构体。
 
 发现程序里面留有一个后门函数：
 
@@ -224,7 +223,6 @@ vtable是IO_jump_t类型的指针，IO_jump_t中保存了一些函数指针，�
 
 ## 0x03 漏洞利用
 
-这道题都给出了 stdin，stderr，stdout 地址，那就好办了。
 
 ![pic4]
 
@@ -336,7 +334,7 @@ stdin，stdout，stderr地址都是以0x7f开头，可以通过错位实现fastb
 
 ## 0x05 总结
 
-这个程序将 stdin，stderr，stdout 结构体写在bss段，不用在`_IO_list_all`中找，可直接在bss中改结构体的地址，知道了这点就很容易利用了。
+这个程序巧妙之处在于，刚好申请的0x68内存，能配合bss段指向libc的FILE指针的0x7f开头地址，造成fastbin_attack，实现任意地址写。能够控制ptr指针，伪造`IO_FILE`结构就不在话下。
 
 
 
