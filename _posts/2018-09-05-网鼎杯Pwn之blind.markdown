@@ -110,12 +110,15 @@ tags:
 
 ## 0x01 漏洞分析
 
-明显的UAF，改chunk的fd实现任意地址写；看了大佬们的writeup才知道，bss段存在 stdin，stderr，stdout等`_IO_FILE`结构体的指针，且在&ptr地址上面，任意地址写的话，就往ptr里面以0x68为间隔，写连续的mem空间地址，以便在bss段伪造`_IO_FILE`结构与`vtable`结构。然后还要往bss段首，也就是`FILE *stdout`指针的地方写入伪造的FILE结构地址，修改文件流的指针，使其指向伪造的`_IO_FILE`结构体。
-
 ![pic4]
 
 在bss段首GDB识别出来这是stdin，stderr，stdout 结构体指针，地址高位的0x7f可错位利用。
 
+明显的UAF，改chunk的fd实现往bss段任意地址写；
+
+看了大佬们的writeup才知道，在标准I/O库中，每个程序启动时有三个文件流是自动打开的，系统自动填充在bss段的，那就是 stdin，stderr，stdout`_IO_FILE`结构体的指针。
+
+且FIEL结构体指针在&ptr地址上面，任意地址写的话，就往ptr里面以0x68为间隔，写连续的mem空间地址，以便在bss段伪造`_IO_FILE`结构与`vtable`结构。然后还要往bss段首，也就是`FILE *stdout`指针的地方写入伪造的FILE结构地址，修改文件流的指针，使其指向伪造的`_IO_FILE`结构体。
 
 发现程序里面留有一个后门函数：
 
@@ -123,6 +126,8 @@ tags:
 	{
 	  return system("/bin/sh");
 	}
+
+可往vtable相关函数写。
 
 ## 0X02 IO_FILE 介绍
 
