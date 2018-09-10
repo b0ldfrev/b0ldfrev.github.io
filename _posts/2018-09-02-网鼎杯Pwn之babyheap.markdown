@@ -159,12 +159,12 @@ chunk 0 另外0x16的空间填为 `p64(0) + p64(0) + p64(0x31)` ；
 
 这样的话，chunk 0 的fd就指向自身的p64(0) + p64(0x31)位置，相当于伪造了一个chunk头，便于fastbin_attack时分配；
 
-我们的目标是要fake一个非fastbin的chunk，我们继续分配两个空间(重复利用chunk 0 1)`Add(6, "aaaa" + '\n')` ,
+我们的目标是要fake一个非fastbin的chunk，然后free泄露libc，我们继续分配两个空间(利用fastbin中chunk 0被修改的fd)`Add(6, "aaaa" + '\n')` ,
 `Add(7, p64(0) + p64(0xa1) + '\n')`  我们就成功覆盖chunk 1 的 pre_size 和 size 为 0 与 0xa1；
 
-为伪造的0xa1大小的chunk分配足够空间，再分配2个空间紧跟chunk 0 1后面`Add(3,'CCCCCCCC\n')` `Add(4,'DDDDDDDD\n')`；
+为伪造的0xa1大小的chunk 1分配足够空间，再分配2个空间紧跟chunk 0 1后面`Add(2,'CCCCCCCC\n')` `Add(3,'DDDDDDDD\n')`；
 
-为了实现任意地址写，得构造空闲chunk来unlink，这里我们利用向前合并，这时再分配个2空间`Add(4, p64(0) + p64(0x31) + p64(0x602080 - 0x18) + p64(0x602080 - 0x10))` 与 `Add(5, p64(0x30) + p64(0x30) + '\n')` ；
+同时为了实现任意地址写，得构造空闲chunk来unlink，这里我们利用向前合并，这时再分配个2空间`Add(4, p64(0) + p64(0x31) + p64(0x602080 - 0x18) + p64(0x602080 - 0x10))` 与 `Add(5, p64(0x30) + p64(0x30) + '\n')` ；
 
 这时chunk 4 的`pre_size`与size空间属于0xa1 chunk ，chunk 4 的mem空间为被unlink的`fake_chunk_4`，chunk 5的mem 空间 ，也就是`fake_chunk_5` 的头为0x30 0x30代表 `fake_chunk_4` 为空 
 
@@ -300,7 +300,7 @@ bingo 最后就很简单了，分配一个新chunk 内容为 '/bin/sh\x00',并fr
 
 ## 0x03 总结
 
-这道题真的十分巧妙，edit3次是极限，当时比赛的时候卡在了fastbin_attack 不知道怎么构造，现在也是张姿势了。
+这道题真的十分巧妙，edit3次是极限，当时比赛的时候卡在了`fastbin_attack` 不知道怎么构造，同时还学到一个新姿势：构造好`fake_chunk`的前提下 free操作时可以同时实现泄露libc基址和unlink.....haha
 
 >[文件下载](https://github.com/yxshyj/project/tree/master/pwn/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bbabyheap)
 
