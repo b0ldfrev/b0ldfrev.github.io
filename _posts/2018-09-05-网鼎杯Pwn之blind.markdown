@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "网鼎杯Pwn之blind"
-subtitle:   "特殊的_IO_FILE利用"
+subtitle:   "_IO_FILE 利用"
 date:       2018-09-05 12:00:00
 author:     "Chris"
 catalog: true
