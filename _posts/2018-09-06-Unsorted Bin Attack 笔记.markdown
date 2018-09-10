@@ -52,7 +52,7 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
      //取得链表中倒数第二个chunk的地址
 	unsorted_chunks(av)->bk= bck
      //将Unsorted Bin[1]中bk设置为 链表中倒数第二个chunk的地址
-	bck->fd == unsorted_chunks(av);
+	bck->fd == unsorted_chunks(av);  //利用点
      //将链表中倒数第二个chunk的fd设置为 main_arena+48 || 88
 
 漏洞利用就在这里了：
@@ -73,7 +73,7 @@ unsorted bin attack 确实可以修改任意地址的值，但是所修改成的
 
 
 
-
+> [相关笔记](https://sirhc.xyz/2018/07/28/%E5%88%A9%E7%94%A8main_arena%E6%B3%84%E9%9C%B2libc%E5%9F%BA%E5%9D%80/)
 
 
 
