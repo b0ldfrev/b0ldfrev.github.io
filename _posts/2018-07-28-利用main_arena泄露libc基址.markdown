@@ -17,7 +17,9 @@ tags:
 
 unsorted bin是双向链表结构，在unsorted bin的顶端 32位指向 **<main_arena+48>** 
 
-1 . 使用pwndbg调试，当unsorted bin中存在多个回收的chunk时，如图：
+free和malloc操作时，最后free的chunk被链接到链表的头部，则申请chunk则是从链表的尾部开始
+
+1 . 使用pwndbg调试，当unsorted bin中存在多个回收的chunk时，如图，先 free chunk2 及0x804a058 ，再 free chunk1 及0x804a160
 
 ![pic1]
 
