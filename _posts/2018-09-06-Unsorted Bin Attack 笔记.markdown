@@ -46,17 +46,21 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 取出的简化源代码：
 
-	victim = unsorted_chunks(av)->bk    //取得Unsorted Bin[1]中bk 也就是链表尾chunk的地址
-	bck = victim->bk     //取得链表中倒数第二个chunk的地址
-	unsorted_chunks(av)->bk= bck    //将Unsorted Bin[1]中bk设置为 链表中倒数第二个chunk的地址
-	bck->fd == unsorted_chunks(av);   //将链表中倒数第二个chunk的fd设置为 main_arena+48 || 88
+	victim = unsorted_chunks(av)->bk
+     //取得Unsorted Bin[1]中bk 也就是链表尾chunk的地址
+	bck = victim->bk
+     //取得链表中倒数第二个chunk的地址
+	unsorted_chunks(av)->bk= bck
+     //将Unsorted Bin[1]中bk设置为 链表中倒数第二个chunk的地址
+	bck->fd == unsorted_chunks(av);
+     //将链表中倒数第二个chunk的fd设置为 main_arena+48 || 88
 
 漏洞利用就在这里了：
 
-		victim  =  unsorted_chunks(av)->bk  =  p
-		bck  =  victim->bk  =  p->bk  =  target_addr-16
-		unsorted_chunks(av)->bk  =  bck  =  target_addr-16
-		bck->fd  =  *(target_addr -16+16)  =  unsorted_chunks(av);
+	victim  =  unsorted_chunks(av)->bk  =  p
+	bck  =  victim->bk  =  p->bk  =  target_addr-16
+	unsorted_chunks(av)->bk  =  bck  =  target_addr-16
+	bck->fd  =  *(target_addr -16+16)  =  unsorted_chunks(av);
 
 可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，在插入 chunk 时，可能会出现问题。
 
