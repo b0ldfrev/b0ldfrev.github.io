@@ -172,7 +172,7 @@ chunk 0 另外0x16的空间填为 `p64(0) + p64(0) + p64(0x31)` ；
 
 ![pic5]
 
-chunk 错了一下位
+chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 
 #### 3.补充unlink向前合并操作知识
 
@@ -300,7 +300,7 @@ bingo 最后就很简单了，分配一个新chunk 内容为 '/bin/sh\x00',并fr
 
 ## 0x03 总结
 
-这道题真的十分巧妙，edit3次是极限，当时比赛的时候卡在了`fastbin_attack` 不知道怎么构造，同时还学到一个新姿势：构造好`fake_chunk`的前提下 free操作时可以同时实现泄露libc基址和unlink.....haha
+这道题chunk错位构造的十分巧妙，edit3次是极限，当时比赛的时候卡在了`fastbin_attack` 不知道怎么搞....是我太菜....，同时还学到一个新姿势：构造好`fake_chunk`的前提下 free操作时可以同时实现泄露libc基址和unlink.....haha
 
 >[文件下载](https://github.com/yxshyj/project/tree/master/pwn/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bbabyheap)
 
