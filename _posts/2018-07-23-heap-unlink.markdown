@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "heap-unlink"
-subtitle:   " DynELF+unlink 利用"
+subtitle:   "unlink 原理与利用"
 date:       2018-07-23 12:00:00
 author:     "Chris"
 catalog: true
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-# 0x00 代码分析
+## 0x00 代码分析
 
 1，检查保护
 
