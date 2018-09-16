@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "heap-unlink"
-subtitle:   " DynELF+unlink 利用"
+subtitle:   "unlink 原理与利用"
 date:       2018-07-23 12:00:00
 author:     "Chris"
 catalog: true
@@ -11,8 +11,9 @@ tags:
  
 ---
 
+>**PS :**该程序 示范unlink的 **向后合并** 操作，如要实现 **相前合并** 操作，有点复杂，得构造chunk错位，详见我之后的文章。
 
-# 0x00 代码分析
+## 0x00 代码分析
 
 1，检查保护
 

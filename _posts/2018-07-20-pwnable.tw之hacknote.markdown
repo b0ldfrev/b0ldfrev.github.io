@@ -11,7 +11,7 @@ tags:
 ---
 
 
-# 0x00 代码分析
+## 0x00 代码分析
 
 1，检查保护
 
@@ -24,7 +24,7 @@ tags:
 
 2，使用IDA分析程序流程
 
-main 函数分析
+**main 函数分析**
 
 	void __cdecl __noreturn main()
 	{
@@ -71,7 +71,7 @@ main 函数分析
 
 读入你输入的选项，然后执行对应的函数
 
-Add 函数分析
+**Add 函数分析**
 
     
 	unsigned int sub_8048646()
@@ -134,7 +134,7 @@ Add 函数分析
 
 
 
-Delete 函数分析
+**Delete 函数分析**
 
 	unsigned int sub_80487D4()
 	{
@@ -161,7 +161,7 @@ Delete 函数分析
 	}
 
 
-print 函数分析
+**print 函数分析**
 
 	unsigned int sub_80488A5()
 	{
@@ -185,7 +185,7 @@ print 函数分析
 
 该函数最后调用了func指针指向的函数，根据Add函数中的赋值，这个函数应该是sub_804862B
 
-sub_804862B 函数分析
+**sub_804862B 函数分析**
 
 	int __cdecl sub_804862B(int a1)
 	{
