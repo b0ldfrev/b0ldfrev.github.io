@@ -225,6 +225,11 @@ vtable是IO_jump_t类型的指针，IO_jump_t中保存了一些函数指针，�
 	   21 NULL, // imbue
 	};
 
+printf和puts是常用的输出函数，在printf的参数是以'\n'结束的纯字符串时，printf会被优化为puts函数并去除换行符。
+
+puts在源码中实现的函数是_IO_puts，这个函数的操作与fwrite的流程大致相同，函数内部同样会调用vtable中的_IO_sputn，结果会执行_IO_new_file_xsputn，最后会调用到系统接口write函数。
+
+printf的调用栈回溯如下，同样是通过_IO_file_xsputn实现
 
 ## 0x03 漏洞利用
 
