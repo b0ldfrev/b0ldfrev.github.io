@@ -43,6 +43,31 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 此时，所申请的 chunk 处于 small bin 所在的范围，其对应的 bin 中暂时没有 chunk，所以会去unsorted bin中找，发现 unsorted bin 不空，于是把 unsorted bin 中的最后一个 chunk 拿出来。
 
+        while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
+            bck = victim->bk;
+            if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
+                __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
+                malloc_printerr(check_action, "malloc(): memory corruption",
+                                chunk2mem(victim), av);
+            size = chunksize(victim);
+
+            /*
+               If a small request, try to use last remainder if it is the
+               only chunk in unsorted bin.  This helps promote locality for
+               runs of consecutive small requests. This is the only
+               exception to best-fit, and applies only when there is
+               no exact fit for a small chunk.
+             */
+            /* 显然，bck被修改，并不符合这里的要求*/
+            if (in_smallbin_range(nb) && bck == unsorted_chunks(av) &&
+                victim == av->last_remainder &&
+                (unsigned long) (size) > (unsigned long) (nb + MINSIZE)) {
+                ....
+            }
+
+            /* remove from unsorted list */
+            unsorted_chunks(av)->bk = bck;
+            bck->fd                 = unsorted_chunks(av);
 
 取出的简化源代码：
 
