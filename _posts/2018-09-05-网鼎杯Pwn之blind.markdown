@@ -250,9 +250,83 @@ printf和puts是常用的输出函数，在printf的参数是以'\n'结束的纯
 
 puts在源码中实现的函数是_IO_puts，这个函数的操作与fwrite的流程大致相同，函数内部同样会调用vtable中的_IO_sputn，结果会执行_IO_new_file_xsputn，最后会调用到系统接口write函数。
 
-printf的调用栈回溯如下，同样是通过_IO_file_xsputn实现
+printf的调用同样是通过_IO_xsputn实现
 
-## 0x03 漏洞利用
+## 0x03 vprintf 部分源码解析
+
+print函数里面会调用vprint，贴上ida的源码
+
+    __int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
+
+      a1=(_IO_FILE*)stdin
+
+	  v3 = *(_DWORD *)(a1 + 192);
+	  if ( v3 )
+	  {
+	    if ( v3 != -1 )
+	      return 0xFFFFFFFFLL;
+	  }
+	  else
+	  {
+	    *(_DWORD *)(a1 + 192) = -1;
+	  }
+	  v4 = *(_DWORD *)a1;
+	  if ( *(_DWORD *)a1 & 8 )
+	  {
+	    *(_DWORD *)a1 = v4 | 0x20;
+	    errno = 9;
+	    return 0xFFFFFFFFLL;
+	  }
+	  if ( !a2 )
+	  {
+	    errno = 22;
+	    return 0xFFFFFFFFLL;
+	  }
+	  v5 = a3;
+	  v6 = a2;
+	  v7 = a1;
+	  if ( v4 & 2 )
+	    return sub_4FE60(a1, a2, a3);
+	  v8 = *a3;
+	  LODWORD(v223) = *(_DWORD *)a1;
+	  v9 = 0;
+	  v235 = v8;
+	  v236 = a3[1];
+	  v237 = a3[2];
+	  v10 = strchrnul(a2, 37LL);
+	  v226 = (_BYTE *)v10;
+	  if ( !(v223 & 0x8000) )
+	  {
+	    v9 = dword_3C9730;
+	    if ( dword_3C9730 )
+	    {
+	      ((void (__fastcall *)(__int64 (__fastcall **)(), __int64 (__fastcall *)(), __int64))(__readfsqword(0x30u) ^ __ROR8__(qword_3C96F0, 17)))(
+	        &v238,
+	        funlockfile,
+	        a1);
+	      if ( *(_DWORD *)a1 & 0x8000 )
+	        goto LABEL_7;
+	    }
+
+凡是出现return的地方我们都得绕过，这样才能使程序流程跳转到`LABEL_7`
+
+然后
+
+	LABEL_7:
+	  v11 = *(_QWORD *)(a1 + 216); //取IO_jump_t   *vtable
+	  v12 = (__int64)v6;
+	  v223 = v10 - (_QWORD)v6;
+	  v13 = (*(__int64 (__fastcall **)(__int64, const char *, __int64))(v11 + 56))(a1, v6, 
+      /* v11 + 56是取vtable虚表里面的函数指针_IO_sputn 并调用 */
+	  v10 - (_QWORD)v6);
+
+所以综上。有些地方不用绕过，但有些地方必须使其验证通过
+
+所以伪造的`IO_FILE_plu`s结构体中的flags要满足下面的条件
+
+`flag&8 = 0 and flag &2 =0 and flag & 0x8000 != 0`
+
+## 0x04 漏洞利用
 
 
 ![pic4]
@@ -294,7 +368,7 @@ stdin，stdout，stderr地址都是以0x7f开头，可以通过错位实现fastb
 
 
 
-## 0x04 脚本
+## 0x05 脚本
 
 	from pwn import *
 	context.log_level = 'debug'
@@ -363,7 +437,7 @@ stdin，stdout，stderr地址都是以0x7f开头，可以通过错位实现fastb
 
 >[文件下载](https://github.com/yxshyj/project/tree/master/pwn/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bblind)
 
-## 0x05 总结
+## 0x06 总结
 
 这个程序巧妙之处在于，刚好申请的0x68内存，能配合bss段指向libc的FILE指针的0x7f开头地址，造成fastbin_attack，实现任意地址写。能够控制ptr指针，伪造`IO_FILE`结构就不在话下。
 
