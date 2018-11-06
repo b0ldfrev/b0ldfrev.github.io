@@ -10,7 +10,7 @@ tags:
  
 ---
 
-Unsorted Bin Attack
+## Unsorted Bin Attack
 
 * 当一个较大的 chunk 被分割成两半后，如果剩下的部分大于 MINSIZE，就会被放到 unsorted bin 中。
 * 释放一个不属于 fast bin 的 chunk，并且该 chunk 不和 top chunk 紧邻时，该 chunk 会被首先放到 unsorted bin 中。关于top chunk的解释，请参考下面的介绍。
@@ -39,7 +39,7 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 经过修改之后，原来在 unsorted bin 中的 p 的 bk 指针就会指向 target addr-16 处伪造的 chunk，即 Target Value 处于伪造 chunk 的 fd 处。
 
-***申请400大小的chunk***
+***申请chunk***
 
 此时，所申请的 chunk 处于 small bin 所在的范围，其对应的 bin 中暂时没有 chunk，所以会去unsorted bin中找，发现 unsorted bin 不空，于是把 unsorted bin 中的最后一个 chunk 拿出来。
 
@@ -68,6 +68,18 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
             /* remove from unsorted list */
             unsorted_chunks(av)->bk = bck;
             bck->fd                 = unsorted_chunks(av);
+            
+			   if (size == nb) {
+			set_inuse_bit_at_offset(victim, size);
+			if (av != &main_arena)
+			victim->size |= NON_MAIN_ARENA;
+			check_malloced_chunk(av, victim, nb);
+			void *p =  chunk2mem(victim);
+			if ( __builtin_expect (perturb_byte, 0))
+			alloc_perturb (p, bytes);
+			return p;
+			}
+
 
 取出的简化源代码：
 
@@ -96,7 +108,33 @@ unsorted bin attack 确实可以修改任意地址的值，但是所修改成的
 * 我们通过修改循环的次数来使得程序可以执行多次循环。
 * 我们可以修改 heap 中的 global_max_fast 来使得更大的 chunk 可以被视为 fast bin，这样我们就可以去执行一些 fast bin attack了。
 
+## 注意事项
 
+由于Unsorted Bin Attack 更改了Unsorted Bin chunk的bk指针，使其指向了构造的地址附近
+
+	while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
+	            bck = victim->bk;
+	            if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
+	                __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
+	                malloc_printerr(check_action, "malloc(): memory corruption",
+	                                chunk2mem(victim), av);
+
+当再次遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段被打乱的chunk，如没有事先构造里面的fd与bk指针均可能指向一段非法的地址，执行之后代码时`bck = victim->bk;`就可能报错`malloc_printerr`
+
+
+但是如果之前在执行分配chunk时，大小正好和Unsorted Bin中的chunk大小一致
+
+			            if (size == nb) {
+			set_inuse_bit_at_offset(victim, size);
+			if (av != &main_arena)
+			victim->size |= NON_MAIN_ARENA;
+			check_malloced_chunk(av, victim, nb);
+			void *p =  chunk2mem(victim);
+			if ( __builtin_expect (perturb_byte, 0))
+			alloc_perturb (p, bytes);
+			return p;
+			}
+如果当前遍历的 chunk 与所需的 chunk 大小一致，将当前 chunk 返回。首先设置当前chunk 处于 inuse 状态，该标志位处于相邻的下一个 chunk 的 size 中，如果当前分配区不是主分配区，设置当前 chunk 的非主分配区标志位，最后调用 chunk2mem()获得 chunk 中可用的内存指针，返回给应用层，退出。  就不会出现上面的错误。
 
 > [相关笔记](https://sirhc.xyz/2018/07/28/%E5%88%A9%E7%94%A8main_arena%E6%B3%84%E9%9C%B2libc%E5%9F%BA%E5%9D%80/)
 

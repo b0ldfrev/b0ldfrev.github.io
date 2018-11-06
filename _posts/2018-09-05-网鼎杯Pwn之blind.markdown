@@ -176,6 +176,27 @@ FILE结构定义在libio.h中，如下所示
 	
 	  _IO_lock_t *_lock;
 	#ifdef _IO_USE_OLD_IO_FILE
+	#endif
+	#if defined _G_IO_IO_FILE_VERSION && _G_IO_IO_FILE_VERSION == 0x20001
+	  _IO_off64_t _offset;
+	# if defined _LIBC || defined _GLIBCPP_USE_WCHAR_T
+	  /* Wide character stream stuff.  */
+	  struct _IO_codecvt *_codecvt;
+	  struct _IO_wide_data *_wide_data;
+	  struct _IO_FILE *_freeres_list;
+	  void *_freeres_buf;
+	# else
+	  void *__pad1;
+	  void *__pad2;
+	  void *__pad3;
+	  void *__pad4;
+	# endif
+	  size_t __pad5;
+	  int _mode;
+	  /* Make sure we don't get into trouble again.  */
+	  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];
+	#endif
+
 	};
 
 进程中的FILE结构会通过`_chain`域彼此连接形成一个链表，链表头部用全局变量`_IO_list_all`表示，通过这个值我们可以遍历所有的FILE结构。
