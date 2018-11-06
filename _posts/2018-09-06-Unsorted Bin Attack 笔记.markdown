@@ -101,12 +101,6 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，在插入 chunk 时，可能会出现问题。
 
-unsorted bin attack 确实可以修改任意地址的值，但是所修改成的值却不受我们控制，唯一可以知道的是，这个值比较大。而且，需要注意的是，
-
-这看起来似乎并没有什么用处，但是其实还是有点卵用的，比如说:
-
-* 我们通过修改循环的次数来使得程序可以执行多次循环。
-* 我们可以修改 heap 中的 global_max_fast 来使得更大的 chunk 可以被视为 fast bin，这样我们就可以去执行一些 fast bin attack了。
 
 ## 注意事项
 
@@ -122,7 +116,7 @@ unsorted bin attack 确实可以修改任意地址的值，但是所修改成的
 当再次遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段被打乱的chunk，如没有事先构造里面的fd与bk指针均可能指向一段非法的地址，执行之后代码时`bck = victim->bk;`就可能报错`malloc_printerr`
 
 
-但是如果之前在执行分配chunk时，大小正好和Unsorted Bin中的chunk大小一致
+但是如果之前在分配chunk时，分配的大小正好和Unsorted Bin中的chunk大小一致
 
 			            if (size == nb) {
 			set_inuse_bit_at_offset(victim, size);
@@ -135,6 +129,17 @@ unsorted bin attack 确实可以修改任意地址的值，但是所修改成的
 			return p;
 			}
 如果当前遍历的 chunk 与所需的 chunk 大小一致，将当前 chunk 返回。首先设置当前chunk 处于 inuse 状态，该标志位处于相邻的下一个 chunk 的 size 中，如果当前分配区不是主分配区，设置当前 chunk 的非主分配区标志位，最后调用 chunk2mem()获得 chunk 中可用的内存指针，返回给应用层，退出。  就不会出现上面的错误。
+
+## 利用途径
+
+unsorted bin attack 确实可以修改任意地址的值，但是所修改成的值却不受我们控制，唯一可以知道的是，这个值比较大。而且，需要注意的是，
+
+这看起来似乎并没有什么用处，但是其实还是有点卵用的，比如说:
+
+* 我们通过修改循环的次数来使得程序可以执行多次循环。
+* 我们可以修改 heap 中的 global_max_fast 来使得更大的 chunk 可以被视为 fast bin，这样我们就可以去执行一些 fast bin attack了。
+* 最后一步申请chunk时只要不等于unsorted bin里面的chunk大小，便可以进入`malloc_printerr`流程.覆盖 `_IO_list_all`为main_arena+48或88，这时unsorted bin中的chunk会被链入`small_bin`,至于是bins[n],n就得看chunk大小；使得`_IO_list_all`结构的`_chain`刚好就是bins[n]，在bins[n]也就是之前的unsorted bin chunk中构造新的
+`_IO_FILE`。这也就是`_IO_FILE`利用的FSOP（File Stream Oriented Programmin）
 
 > [相关笔记](https://sirhc.xyz/2018/07/28/%E5%88%A9%E7%94%A8main_arena%E6%B3%84%E9%9C%B2libc%E5%9F%BA%E5%9D%80/)
 
