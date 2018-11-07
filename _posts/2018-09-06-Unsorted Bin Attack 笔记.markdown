@@ -67,17 +67,17 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
             /* remove from unsorted list */
             unsorted_chunks(av)->bk = bck;
-            bck->fd                 = unsorted_chunks(av);
+            bck->fd = unsorted_chunks(av);
             
-			   if (size == nb) {
-			set_inuse_bit_at_offset(victim, size);
-			if (av != &main_arena)
-			victim->size |= NON_MAIN_ARENA;
-			check_malloced_chunk(av, victim, nb);
-			void *p =  chunk2mem(victim);
-			if ( __builtin_expect (perturb_byte, 0))
-			alloc_perturb (p, bytes);
-			return p;
+			if (size == nb) {
+				set_inuse_bit_at_offset(victim, size);
+				if (av != &main_arena)
+				victim->size |= NON_MAIN_ARENA;
+				check_malloced_chunk(av, victim, nb);
+				void *p =  chunk2mem(victim);
+				if ( __builtin_expect (perturb_byte, 0))
+				alloc_perturb (p, bytes);
+				return p;
 			}
 
 
@@ -118,16 +118,17 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 但是如果之前在分配chunk时，分配的大小正好和Unsorted Bin中的chunk大小一致
 
-			            if (size == nb) {
-			set_inuse_bit_at_offset(victim, size);
-			if (av != &main_arena)
-			victim->size |= NON_MAIN_ARENA;
-			check_malloced_chunk(av, victim, nb);
-			void *p =  chunk2mem(victim);
-			if ( __builtin_expect (perturb_byte, 0))
-			alloc_perturb (p, bytes);
-			return p;
+	if (size == nb) {
+		set_inuse_bit_at_offset(victim, size);
+		if (av != &main_arena)
+		victim->size |= NON_MAIN_ARENA;
+		check_malloced_chunk(av, victim, nb);
+		void *p =  chunk2mem(victim);
+		if ( __builtin_expect (perturb_byte, 0))
+		alloc_perturb (p, bytes);
+		return p;
 			}
+
 如果当前遍历的 chunk 与所需的 chunk 大小一致，将当前 chunk 返回。首先设置当前chunk 处于 inuse 状态，该标志位处于相邻的下一个 chunk 的 size 中，如果当前分配区不是主分配区，设置当前 chunk 的非主分配区标志位，最后调用 chunk2mem()获得 chunk 中可用的内存指针，返回给应用层，退出。  就不会出现上面的错误。
 
 ## 利用途径
