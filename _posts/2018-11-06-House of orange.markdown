@@ -86,4 +86,4 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 下面是_IO_flush_all_lockp的源代码：
 
 
-![](./pic/house_of_orange/1.jpg)
+![](/img/pic/house_of_orange/1.jpg)
