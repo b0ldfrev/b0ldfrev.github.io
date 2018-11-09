@@ -93,29 +93,31 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 ![](/img/pic/house_of_orange/1.jpg)
 
-当`_IO_FILE`结构满足下面的条件，
+可以看出当`_IO_FILE`结构满足下面的条件：最外层（）里面的判断结果为ture时`（）&&_IO_OVERFLOW (fp, EOF)`才会被调用（&&有短路功能），转而通过`fp = fp->_chain`寻找新的`_IO_file`结构来使用。
 
 
-	if (((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
-	#if defined _LIBC || defined _GLIBCPP_USE_WCHAR_T
+	（
+		(fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
+
 	       || (_IO_vtable_offset (fp) == 0
 	           && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr
-	                    > fp->_wide_data->_IO_write_base))
-	#endif
-	       )
+	                    > fp->_wide_data->_IO_write_base)
+	                     
+	                    ）
+	       
+所以伪造的file结构体要通过的条件
 
-调用`_IO_OVERFLOW (fp, EOF) == EOF)`，转而通过`fp = fp->_chain`寻找新的`_IO_file`结构来使用。
+	1.((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
+	   
+	或者是
+	
+	2._IO_vtable_offset (fp) == 0 
+	&& fp->_mode > 0 
+	&& (fp->_wide_data->_IO_write_ptr > fp->_wide_data->_IO_write_base)
+
+一般来说第一种比较好伪造,我的exp也是基于第一种的。
 
 
-所以我们要绕过的检查如下：
-
-	fp->_mode > 0;
-	_IO_vtable_offset (fp) ==0
-	fp->_wide_data->_IO_write_ptr > fp->_wide_data->_IO_write_base
-
-这样才能成功调用`_IO_OVERFLOW (fp, EOF)`
-
-有人可能在想：对flags的校验呢？其实对flags的校验写在了`_IO_flockfile`宏中，我在libc的ida代码中分析得出**flags校验失败后也会跳转到下面一行代码继续执行** so这里就不用在意它了
 
 `_IO_flush_all_lockp `不需要攻击者手动调用，在一些情况下这个函数会被系统调用：
 

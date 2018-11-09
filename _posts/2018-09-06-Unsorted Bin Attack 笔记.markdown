@@ -14,7 +14,7 @@ tags:
 
 * 当一个较大的 chunk 被分割成两半后，如果剩下的部分大于 MINSIZE，就会被放到 unsorted bin 中。
 * 释放一个不属于 fast bin 的 chunk，并且该 chunk 不和 top chunk 紧邻时，该 chunk 会被首先放到 unsorted bin 中。关于top chunk的解释，请参考下面的介绍。
-* 当进行 malloc_consolidate 时，可能会把合并后的 chunk 放到 unsorted bin 中，如果不是和 top chunk 近邻的话。
+* 当进行 `malloc_consolidate` 时，可能会把合并后的 chunk 放到 unsorted bin 中，如果不是和 top chunk 近邻的话。
 * Unsorted Bin 在使用的过程中，采用的遍历顺序是 FIFO，即插入的时候插入到 unsorted bin 的头部，取出的时候从链表尾获取。
 * 在程序 malloc 时，如果在 fastbin，small bin 中找不到对应大小的 chunk，就会尝试从 Unsorted Bin 中寻找 chunk。如果取出来的 chunk 大小刚好满足，就会直接返回给用户，否则就会把这些 chunk 分别插入到对应的 bin 中。
 
@@ -113,7 +113,7 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 	                malloc_printerr(check_action, "malloc(): memory corruption",
 	                                chunk2mem(victim), av);
 
-当再次遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段被打乱的chunk，如没有事先构造里面的fd与bk指针均可能指向一段非法的地址，执行之后代码时`bck = victim->bk;`就可能报错`malloc_printerr`
+当再次while遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段错乱的chunk，执行`chunksize_nomask`很有可能会触发堆块大小不匹配的错误，进一步触发malloc_printerr 等一系列函数...
 
 
 但是如果之前在分配chunk时，分配的大小正好和Unsorted Bin中的chunk大小一致
