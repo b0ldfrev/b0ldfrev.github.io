@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "House of orange🍊"
-subtitle:   "Overwrite TopChunk + Unsorted Bin Attack + Fsop"
+subtitle:   "Overwrite TopChunk + Unsorted Bin Attack + FSOP"
 date:       2018-11-06 12:00:00
 author:     "Chris"
 catalog: true
@@ -77,11 +77,12 @@ House of Orange 的利用比较特殊，首先需要目标漏洞是堆上的漏�
 
 在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的另一篇博文[https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
 
+<span id="2.23FSOP"></span>
 ## glibc2.24以下的FSOP
 
 这里简单介绍一下FSOP
 
-FSOP 是 File Stream Oriented Programming 的缩写，根据前面对 FILE 的介绍得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
+FSOP 是 File Stream Oriented Programming 的缩写，根据前面对 [IO_FILE的介绍](https://sirhc.xyz/2018/09/05/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bblind/#IO_FILE) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
 
 FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的`_IO_FILE` 项，但是单纯的伪造只是构造了数据还需要某种方法进行触发。FSOP 选择的触发方法是调用`_IO_flush_all_lockp`，这个函数会刷新`_IO_list_all` 链表中所有项的文件流，相当于对每个 FILE 调用 fflush，也对应着会调用`_IO_FILE_plus.vtable` 中的`_IO_overflow`。
 
@@ -197,4 +198,32 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 官方的解决思路是利用House-Of-Orange
 
-1.首先要使 Unsort bin 中在没有free函数的情况下，出现被释放的chunk，我们利用Overwrite TopChunk，修改topchunk的size，要绕过的check见 - [House of orange 原理](#House_of_orange),于是[IO_FILE](https://sirhc.xyz/2018/09/05/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bblind/#IO_FILE)
+###### 1.OverWrite TopChunk
+
+首先要使 Unsort bin 中在没有free函数的情况下，出现被释放的chunk，我们利用Overwrite TopChunk，修改topchunk的size，要绕过的check见 - [House of orange 原理](#House_of_orange)。
+
+创建一个house，upgrade它覆盖topchunk，覆盖`top chunk`的 size为`0xf31`,为什么是`0xf31` ? 
+我们可以计算，build一个house，我们先分配了 `0x20` 的chunk，然后接着为name分配了 `0x90` 大小的chunk，最后为price，colour又分配了 `0x20` 的chunk，我们一共占用的heap空间为 `0x20+0x90+0x20=0xd0`,再加上top chunk的大小也就是整个main_arena分配的heap大小 必须要页对齐（4kb=0x1000），用`0x1000-0xd0=0xf30` size 的 prev inuse 位必须为 1,所以最终确定构造的size为`0xf31`
+
+	build(0x80,'AAAA',1,1)
+	upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
+
+upgrade后的heap chunks如下图：
+
+![](/img/pic/house_of_orange/11.jpg)
+
+然后如果我们再分配一个不大于mmap分配阈值(默认为 128K)的chunk，让堆以 brk 的形式拓展，之后原有的 top chunk 会被置于 unsorted bin 中。
+
+	build(0x1000,'CCCC',3,3)
+
+执行完后，bins 如图所示：
+
+![](/img/pic/house_of_orange/12.jpg)
+
+原有的 top chunk 会被置于 unsorted bin 中 ，并大小被切割。
+
+###### 2.Leak address
+
+接下来要做的是泄露libc地址和heap地址，涉及到glibc源码的`_int_malloc`函数
+
+
