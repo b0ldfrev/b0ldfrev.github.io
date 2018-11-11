@@ -17,7 +17,7 @@ tags:
 
 House of Orange 的利用比较特殊，首先需要目标漏洞是堆上的漏洞但是特殊之处在于题目中不存在 free 函数或其他释放堆块的函数。我们知道一般想要利用堆漏洞，需要对堆块进行 malloc 和 free 操作，但是在 House of Orange 利用中无法使用 free 函数，因此 House of Orange 核心就是通过漏洞利用获得 free 的效果。
 
-<span id="jump"></span>
+<span id="House_of_orange"></span>
 ## House of orange 原理 
 
 如我们前面所述，House of Orange 的核心在于在没有 free 函数的情况下得到一个释放的堆块 (unsorted bin)。 这种操作的原理简单来说是当前堆的 top chunk 尺寸不足以满足申请分配的大小的时候，原来的 top chunk 会被释放并被置入 unsorted bin 中，通过这一点可以在没有 free 函数情况下获取到 unsorted bins。
@@ -197,4 +197,4 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 官方的解决思路是利用House-Of-Orange
 
-1.首先要使 unsort bin 中在没有free函数的情况下，出现被释放的chunk，我们利用Overwrite TopChunk，修改topchunk的size，要绕过的检查见 [House of orange 原理](#jump)
+1.首先要使 Unsort bin 中在没有free函数的情况下，出现被释放的chunk，我们利用Overwrite TopChunk，修改topchunk的size，要绕过的check见 - [House of orange 原理](#House_of_orange),于是[IO_FILE](https://sirhc.xyz/2018/09/05/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bblind/#IO_FILE)

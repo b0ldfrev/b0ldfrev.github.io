@@ -129,6 +129,7 @@ tags:
 
 可往vtable相关函数写。
 
+<span id="IO_FILE"></span>
 ## 0X02 IO_FILE 介绍
 
 >转自 [ ctf-wiki ]()
