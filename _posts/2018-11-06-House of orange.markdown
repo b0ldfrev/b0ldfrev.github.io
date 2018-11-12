@@ -141,16 +141,16 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 ![](/img/pic/house_of_orange/5.jpg)
 
-1.build功能代码如下：
+###### 1.build功能代码如下：
 
 ![](/img/pic/house_of_orange/6.jpg)
 ![](/img/pic/house_of_orange/7.jpg)
 
-2.see功能代码如下：
+###### 2.see功能代码如下：
 
 ![](/img/pic/house_of_orange/8.jpg)
 
-3.upgrade功能代码如下：
+###### 3.upgrade功能代码如下：
 
 ![](/img/pic/house_of_orange/9.jpg)
 
@@ -212,7 +212,7 @@ upgrade后的heap chunks如下图：
 
 ![](/img/pic/house_of_orange/11.jpg)
 
-然后如果我们再分配一个不大于mmap分配阈值(默认为 128K)的chunk，让堆以 brk 的形式拓展，之后原有的 top chunk 会被置于 unsorted bin 中。
+然后如果我们再分配一个不大于mmap分配阈值(默认为 128K)的chunk，让堆以 brk 的形式拓展，之后原有的 top chunk 会被置于 `unsorted bin` 中。
 
 	build(0x1000,'CCCC',3,3)
 
@@ -220,10 +220,47 @@ upgrade后的heap chunks如下图：
 
 ![](/img/pic/house_of_orange/12.jpg)
 
-原有的 top chunk 会被置于 unsorted bin 中 ，并大小被切割。
+原有的 `top chunk` 会被置于 `unsorted bin` 中 ，且大小被切割。
 
 ###### 2.Leak address
 
-接下来要做的是泄露libc地址和heap地址，涉及到glibc源码的`_int_malloc`函数
+接下来要做的是泄露libc地址和heap地址
+
+此时的`unsorted bin`当中存在着一个大小为`large bin`的chunk，且`last_remainder`指向该chunk
+
+![](/img/pic/house_of_orange/13.jpg)
+
+当我们再次build一个house，且该house的name大小为`large bin`时，我们就能分配到一个可同时泄露`main_arena`地址和`heap`地址的chunk.
+
+	build(0x400,'D'*8,4,4)
+
+![](/img/pic/house_of_orange/14.jpg)
+
+<span id="_int_malloc"></span>
+下面我就来详细分析一下为什么，这涉及到glibc源码`malloc.c`的`_int_malloc()`函数,nb为传入的分配size大小。
+
+![](/img/pic/house_of_orange/15.jpg)
+
+如果所需的 chunk 大小小于等于 fast bins 中的最大 chunk 大小，首先尝试从 fast bins 中
+分配 chunk
+
+![](/img/pic/house_of_orange/16.jpg)
+
+如果分配的 chunk 属于 small bin，首先查找 chunk 所对应 small bins 数组的 index，然后
+根据 index 获得某个 small bin 的空闲 chunk 双向循环链表表头，然后将最后一个 chunk 赋值
+给 victim，如果 victim 与表头相同，表示该链表为空，不能从 small bin 的空闲 chunk 链表中
+分配，这里不处理，等后面的步骤来处理。
+
+![](/img/pic/house_of_orange/18.jpg)
+
+所需 chunk 不属于 small bins，那么就一定属于 large bins，首先根据 chunk 的大小获得
+对应的 large bin 的 index，接着判断当前分配区的 fast bins 中是否包含 chunk，如果存在，调用 malloc_consolidate()函数合并 fast bins 中的 chunk，并将这些空闲 chunk 加入 unsorted bin
+中。
+
+![](/img/pic/house_of_orange/17.jpg)
+
+* 走到了这一步，也就是从 `fast bins` , `small bins` , `large bins`的链表中均没有找到合适的chunk，反向遍历 `unsorted bin` 的双向循环链表中的`unsorted bin chunk`,并检查当前遍历的 chunk 是否合法，不合法则抛出`malloc_printerr` 
+*  如果需要分配一个 `small bin chunk`，在上面的 `small bins` 中没有匹配到合适的chunk，并且 `unsorted bin` 中只有一个 chunk，并且这个 chunk 为 `last remainder chunk`，并且这个 chunk 的大小大于所需 chunk 的大小加上 `MINSIZE`，在满足这些条件的情况下，用这个chunk切分出需要的`small bin chunk`,将内存指针返回给应用层，退出`_int_malloc()`。这是唯一的从`unsorted bin`中分配`small bin chunk`的情况
+*  将双向循环链表中的最后一个 chunk 移除，如果当前遍历的 `unsorted bin chunk` 与所需的 chunk 大小一致，将当前 chunk 返回。
 
 
