@@ -309,7 +309,7 @@ upgrade后的heap chunks如下图：
 
 UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
 
-`_IO_FILE`相关的`FSOP`的原理见[glibc2.24以下的FSOP](2.23FSOP)
+`_IO_FILE`相关的`FSOP`的原理见[glibc2.24以下的FSOP](#2.23FSOP)
 
 首先利用UnsortedBin Attack去劫持`_IO_list_all`全局变量，可将`_IO_list_all`更改为`unsorted_bin(av)`，即`main_arena+0x58`。这样当触发`_IO_flush_all_lockp`时，我们可在`main_arena`寻求构造`fake IO_file`结构的机会。
 
@@ -368,7 +368,7 @@ UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.x
 
 如果那两个判断都为假，那他们相或结果为假，根据&&的短路与，就不会执行右边的`_IO_OVERFLOW (fp, EOF) == EOF)`，直接通过`fp = fp->_chain`寻找新的`_IO_file`结构来执行`_IO_OVERFLOW`
 
-###### 5.EXP
+#### EXP
 
 	from pwn import *
 	#context(os='linux', arch='amd64', log_level='debug')
