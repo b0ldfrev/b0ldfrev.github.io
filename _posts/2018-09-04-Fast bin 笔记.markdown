@@ -24,16 +24,18 @@ bins 的前 7 个大小的空闲 chunk，也就是说，对于 `SIZE_SZ` 为 4B 
 
 ![pic1]
 
+**idx为索引，hold_size为用户请求的size,size为实际分配的chunk_size**
+
 以 64 为系统为例，因此 fastbin 的范围为32字节到128字节(0x20-0x80)，如下：
 
 
-	Fastbins[idx=0, size=0x20] 
-	Fastbins[idx=1, size=0x30] 
-	Fastbins[idx=2, size=0x40] 
-	Fastbins[idx=3, size=0x50] 
-	Fastbins[idx=4, size=0x60] 
-	Fastbins[idx=5, size=0x70] 
-	Fastbins[idx=6, size=0x80]
+	Fastbins[idx=0,hold_size=00-0x18,size=0x20] 
+	Fastbins[idx=1,hold_size=0x19-0x28,size=0x30] 
+	Fastbins[idx=2,hold_size=0x29-0x38,size=0x40] 
+	Fastbins[idx=3,hold_size=0x39-0x48,size=0x50] 
+	Fastbins[idx=4,hold_size=0x49-0x58,size=0x60] 
+	Fastbins[idx=5,hold_size=0x59-0x68,size=0x70] 
+	Fastbins[idx=6,hold_size=0x69-0x78,size=0x80]
 
 
 关于`fastbin_attack`，任意地址分配，对`chunk_size`的检测问题
