@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "House of Roman"
-subtitle:   "无leak函数利用"
+subtitle:   "无leak函数的堆利用"
 date:       2018-11-23 12:00:00
 author:     "Chris"
 catalog: true
@@ -41,4 +41,12 @@ PIE和系统的aslr，对于一个32bit的binary，它的高20bit会被随机化
 
 ![](/img/pic/House_of_Roman/5.jpg)
 
-4 编辑`malloc_hook_chunk`内容，将main_arena覆盖成one_gadget.这里由于onegadget在代码段，在libc中偏移量通常比数据段的`malloc_hook`少4bit，他们实际地址相差甚远，所以就给覆盖造成了困难,在我本地测试的环境中： 比如main_arena+0x58 的地址是 0x7fffffxxx123 ，one_gadget的偏移是 0xe9456 ,由于后12bit未被随机化，所以 main_arena+0x58 肯定是被填为 0x7fffffxxx456，但xxx这三位在我本机环境就不同了，需要爆破xxx这12bit，才能找到正确的one_gadget地址。
+4 编辑`malloc_hook_chunk`内容，将main_arena覆盖成one_gadget.这里由于onegadget在代码段，在libc中代码段的偏移量通常比数据段的`malloc_hook`少4bit，他们实际地址相差甚远，所以就给覆盖造成了困难,在我本地测试的环境中： 比如main_arena+0x58 的地址是 0x7fffffxxx123 ，one_gadget的偏移是 0xe9456 ,由于后12bit未被随机化，所以 main_arena+0x58 肯定是被覆盖为 0x7fffffxxx456，但xxx这三位在我本机环境就不一样了，需要爆破xxx这12bit，才能找到正确的one_gadget地址。
+
+5 至于触发方式，根据调用execve时的rsp指向微调，直接malloc触发或者double free 抛出malloc_printerr触发
+
+>相关链接
+
+[House of Roman 实战-hac425](https://www.cnblogs.com/hac425/p/9416913.html)
+
+[House of Roman-ctf-wiki](https://ctf-wiki.github.io/ctf-wiki/pwn/linux/glibc-heap/house_of_roman/)
