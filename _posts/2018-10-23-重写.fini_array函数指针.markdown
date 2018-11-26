@@ -17,30 +17,184 @@ tags:
 
 我们看一个程序
 
+` ``c
+#include <stdio.h>
+#include <stdlib.h>
+	
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+	
+int main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+return 0;
+}
+	
+void
+start(void)
+{
+printf("hello world!\n");
+}
+	
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+` `` 
+
+------------------------
+
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+	
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+	
+int main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+return 0;
+}
+	
+void
+start(void)
+{
+printf("hello world!\n");
+}
+	
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+```
+
+
+--------------
+
+` ``c
 	#include <stdio.h>
 	#include <stdlib.h>
-	
+		
 	static void start(void) __attribute__ ((constructor));
 	static void stop(void) __attribute__ ((destructor));
-	
+		
 	int main(int argc, char *argv[])
 	{
 	printf("start == %p\n", start);
 	printf("stop == %p\n", stop);
 	return 0;
 	}
-	
+		
 	void
 	start(void)
 	{
 	printf("hello world!\n");
 	}
-	
+		
 	void
 	stop(void)
 	{
 	printf("goodbye world!\n");
 	}
+` `` 
+
+--------------------------
+
+
+```c
+	#include <stdio.h>
+	#include <stdlib.h>
+		
+	static void start(void) __attribute__ ((constructor));
+	static void stop(void) __attribute__ ((destructor));
+		
+	int main(int argc, char *argv[])
+	{
+	printf("start == %p\n", start);
+	printf("stop == %p\n", stop);
+	return 0;
+	}
+		
+	void
+	start(void)
+	{
+	printf("hello world!\n");
+	}
+		
+	void
+	stop(void)
+	{
+	printf("goodbye world!\n");
+	}
+```
+
+----------------------------------
+
+
+`{``%` highlight language `%``}`
+#include <stdio.h>
+#include <stdlib.h>
+	
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+	
+int main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+return 0;
+}
+	
+void
+start(void)
+{
+printf("hello world!\n");
+}
+	
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+`{``%` endhighlight `%``}`
+
+
+
+------------------------------------------
+
+`{``%` highlight language `%``}`
+#include <stdio.h>
+#include <stdlib.h>
+	
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+	
+int main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+return 0;
+}
+	
+void
+start(void)
+{
+printf("hello world!\n");
+}
+	
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+`{``%` endhighlight `%``}`
+
 
 gcc为函数提供了几种类型的属性，其中两个是我们特别感兴趣的：构造函数(constructors)和析构函数(destructors)。程序员应当使用类似下面的方式来指定这些属性：
 
