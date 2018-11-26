@@ -57,7 +57,7 @@ tags:
 
 ![](/img/pic/X64_fmtstr/6.jpg)
 
-GDB调试一波，发现只有在main函数返回的时候`rsp+0x50`与`rsp+0x70`地方满足条件
+GDB调试一波，发现只有在main函数返回并进入one_gadget的时候`rsp+0x70`的地方满足条件为NULL
 
 ![](/img/pic/X64_fmtstr/7.jpg)
 
