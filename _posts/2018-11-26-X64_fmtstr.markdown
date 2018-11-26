@@ -1,0 +1,74 @@
+---
+layout:     post
+title:      "X64 FmtStr"
+subtitle:   "记南邮NCTF一PWN题"
+date:       2018-11-26 12:00:00
+author:     "Chris"
+catalog: true
+tags:
+    - Pwn
+    - 笔记
+ 
+---
+
+>最近刷了一下南邮的CTF比赛，1000分的动态积分，pwn了两道800分的，有一道是关于vsyscall的，还有一道就是关于64位格式化字符串利用的，说它简单其实并不简单...毕竟最后只有4人提交了flag...
+
+关于fmtstr的骚操作有很多，比如泄露，写got表，写ret，写.fini_array，栈迁移到堆等
+
+[32的fmtstr](https://sirhc.xyz/2018/09/01/32%E4%BD%8Dfmtstr%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/)任意地址写很容易实现，因为地址中不含"\x00",printf在打印时不会被截断,64位程序就不一样了，64位下用户可见的内存地址高位都带有\x00
+
+说这么多，我们还是看先程序吧....
+
+![](/img/pic/X64_fmtstr/1.jpg)
+
+![](/img/pic/X64_fmtstr/2.jpg)
+
+![](/img/pic/X64_fmtstr/3.jpg)
+
+很简单，程序外面套了2层函数，就看核心代码，printf函数处有格式化字符串漏洞
+
+
+**先说说最开始踩的坑**：
+
+* **尝试1**
+
+首先想到的是覆盖printf的got表，为了方便就用了pwntools的fmtstr_payload函数，这个函数在32位程序利用下是很方便的`fmtstr_payload(6,{printf_got,system_addr},0,'short')`结果屡试不成功，原因是这个函数默认生成的payload字符串将要写的的地址放在了偏移头，对于64位程序printf时输入的字符串必定会被"\x00"截断，导致写入失败。
+
+![](/img/pic/X64_fmtstr/4.jpg)
+
+* **尝试2**
+
+然后我更换写入方法，将printf_got地址放在字符串最后，调整偏移和内存对齐，只写一次，`payload="a%"+str(system_addr-1)+"c%9$lln"+p64(printf_got)`，这样发送的字符串中就没有00了
+
+![](/img/pic/X64_fmtstr/5.jpg)
+
+继续踩坑，由于`str(system_addr-1)`太大，导致io.interactive()时屏幕上的光标会不停闪烁很长一段时间，输出大量的空字符,使用io.recvall()读取这些字符发现数据量高达128.28MB,结果还是写入失败
+
+* **尝试3**
+
+接上面，既然一次写数据量太大，我就利用循环多次写，每次写2字节。结果发现第一次写了pintf_got表后，第二次再调用printf时不就崩溃了吗，，，/(ㄒoㄒ)/~~
+
+
+**下面重新整理一下思路**：
+
+既然上面方法都不可行，那我们就往ret地址写个one_gadget,循环，每次写2 byte，写三次。
+
+写one_gadget有个限制就是execve的第二个参数必须为0
+
+![](/img/pic/X64_fmtstr/6.jpg)
+
+GDB调试一波，发现只有在main函数返回的时候`rsp+0x50`与`rsp+0x70`地方满足条件
+
+![](/img/pic/X64_fmtstr/7.jpg)
+
+**详细思路见EXP**
+
+![](/img/pic/X64_fmtstr/8.jpg)
+
+执行结果
+
+![](/img/pic/X64_fmtstr/9.jpg)
+
+[下载地址](https://github.com/yxshyj/project/tree/master/pwn/smallbug2)
+
+[相关链接](https://bbs.ichunqiu.com/thread-42943-1-1.html?from=bkyl)
