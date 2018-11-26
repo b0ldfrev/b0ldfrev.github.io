@@ -30,7 +30,7 @@ tags:
 
 #### main 函数分析
 
-```ruby
+```c
 	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
 	{
 	  char *v3; // rdi
