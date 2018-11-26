@@ -30,7 +30,7 @@ tags:
 
 #### main 函数分析
 
-```C
+```ruby
 	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
 	{
 	  char *v3; // rdi
@@ -104,7 +104,7 @@ malloc次数最多10次，每次大小只能为 0x20（fastbin），所以常规
 
 每次edit会使dword_6020B0值+1.当dword_6020B0值为3时，不能进行edit。作用是限制只能进行三次edit,且edit的大小0x20，观察sub_40092b函数
 
-```C
+```c
 
 	unsigned __int64 __fastcall sub_40092B(__int64 a1, unsigned int a2)
 	{
@@ -186,7 +186,7 @@ chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 
 首先检测next chunk是否为free。那么如何检测呢？很简单，查询next chunk之后的chunk的 PREV_INUSE (P)即可。相关代码如下：
 
-```c
+```ruby
 	……
 	/*这里p指向当前chunk*/
 	nextchunk = chunk_at_offset(p, size);
