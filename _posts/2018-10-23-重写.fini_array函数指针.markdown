@@ -171,7 +171,7 @@ printf("goodbye world!\n");
 ----------------------------------
 
 
-`{``%` highlight language `%``}`
+{% highlight C %}
 #include <stdio.h>
 #include <stdlib.h>
 	
@@ -196,7 +196,7 @@ stop(void)
 {
 printf("goodbye world!\n");
 }
-`{``%` endhighlight `%``}`
+{% endhighlight %}
 
 
 
