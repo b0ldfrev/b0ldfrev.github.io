@@ -30,7 +30,7 @@ tags:
 
 #### main 函数分析
 
-```c
+```cpp
 	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
 	{
 	  char *v3; // rdi
@@ -104,7 +104,7 @@ malloc次数最多10次，每次大小只能为 0x20（fastbin），所以常规
 
 每次edit会使dword_6020B0值+1.当dword_6020B0值为3时，不能进行edit。作用是限制只能进行三次edit,且edit的大小0x20，观察sub_40092b函数
 
-```c
+```ruby
 
 	unsigned __int64 __fastcall sub_40092B(__int64 a1, unsigned int a2)
 	{
