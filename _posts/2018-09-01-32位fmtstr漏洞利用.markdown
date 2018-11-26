@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "fmtstr利用之pwn4"
-subtitle:   "记一简单格式化字符串利用过程"
+title:      "32位fmtstr漏洞利用"
+subtitle:   "记一32位格式化字符串漏洞利用"
 date:       2018-09-01 12:00:00
 author:     "Chris"
 catalog: true
@@ -75,14 +75,14 @@ login 函数分析
 程序定义了一个buf[88]的数组，首先让输入你的名字，然后再打印出刚才输入的名字和buf的栈地址，然后再让你输入一个字符串，打印出这个字符串。
 
 
-## 0x01 漏洞分析
+## 0x01 漏洞分析与利用
 
 首先分析输入name的地方，name的地址在bss段，不在栈中无法溢出。输入buf的地方，buf虽然在栈中，大小为`ebp-88h`，但是输入的地方`read(0, &buf, 0x80u)`，长度不能够溢出。明显`printf(&buf);`存在格式化字符串漏洞。
 
 
-## 0X02 漏洞利用与fmtstr_payload介绍
-
 很明显的格式化字符串漏洞了，执行一个任意地址泄露和任意地址写（泄露printf函数的plt.got表内地址，往main函数ret地址写一个main函数地址，回去二次执行程序流程）。因为前面泄露了地址，程序提供了libc库，算出system函数实际地址，第二次就往printf函数的plt.got表写入system函数地址，同时改写返回地址再次执行程序流程。最后printf（&system("/bin/sh")）拿到shell。
+
+## 0X02 fmtstr_payload介绍
 
 这里介绍一个pwntools自带的格式化字符串任意地址写的函数：**fmtstr_payload**
 
@@ -93,7 +93,7 @@ login 函数分析
 参数：
 
 * offset（int） - 您控制的第一个格式化程序的偏移量
-* 写（dict） - dict with addr，value{addr: value, addr2: value2}
+* 字典（dict） - 被写入地址对应->写入的数据，可多个对应{addr: value, addr2: value2}
 * numbwritten（int） - printf函数已写入的字节数
 * write_size（str） - 必须是byte，short或int。告诉您是否要逐字节写入，短按short或int（hhn，hn或n）
 
