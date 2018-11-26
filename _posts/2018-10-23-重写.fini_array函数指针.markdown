@@ -48,7 +48,9 @@ printf("goodbye world!\n");
 
 
 ```c
+
 #include <stdio.h>
+
 #include <stdlib.h>
 	
 static void start(void) __attribute__ ((constructor));
