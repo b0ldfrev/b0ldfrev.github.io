@@ -33,22 +33,26 @@ dll可执行文件，既不能直接运行，也不能接收消息，它们是�
 为了让dll导出函数，需要在每一个需要被导出的函数前面加上标识符：__declspec(dllexport)。 
 利用Build命令生成Dll1动态链接库，这时在Dll1/Debug目录下就会生成.dll文件和.lib文件，这两个文件即为所需的动态链接库的文件。
 
-	__declspec(dllexport) int add(int a, int b){
-	    return a + b;
-	}
-
+```c
+__declspec(dllexport) int add(int a, int b){
+    return a + b;
+}
+```
 ### 使用模块定义（.def）文件创建dll
 使用def文件创建dll的话就不再需要__declspec(dllexport)，因此将代码写成最原始的样子:
 
-	int add(int a, int b){
-	    return a + b;
-	}
-
+```c
+int add(int a, int b){
+    return a + b;
+}
+```
 同时为工程创建一个后缀名为.def的文件，并添加进工程，编辑其内容为：
 
-	EXPORTS
-	add  @编号 
-	add  @编号 NONAME
+```nxml
+EXPORTS
+add  @编号 
+add  @编号 NONAME
+```
 EXPORTS语句用于表明dll将要导出的函数，@后接导出的序号，也可以隐藏函数名导出。 
 
 ## 0x02 dll的使用
@@ -60,10 +64,11 @@ EXPORTS语句用于表明dll将要导出的函数，@后接导出的序号，也
 ### 显示加载方式加载dll
 另一种是通过LoadLiabrary函数显示加载dll。代码如下。需要注意的是这时候我们不再需要注册.lib文件，也不需要声明外部函数。只要在需要使用的地方调用dll文件即可。
 
- 
-    HINSTANCE hInst = LoadLibrary("Dll1.dll");
-    typedef int(*ADD)(int a, int b);
-    ADD add = (ADD)GetProcAddress(hInst, "add");
+```c
+HINSTANCE hInst = LoadLibrary("Dll1.dll");
+typedef int(*ADD)(int a, int b);
+ADD add = (ADD)GetProcAddress(hInst, "add");
+```
 
 ### 两种加载方式对比
 

