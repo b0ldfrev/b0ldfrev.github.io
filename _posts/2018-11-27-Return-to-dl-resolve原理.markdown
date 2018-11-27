@@ -25,17 +25,17 @@ tags:
 ## Environment
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ uname -a
+root@VirtualBox:~/Desktop$ uname -a
 Linux VirtualBox 3.13.0-32-generic #57~precise1-Ubuntu SMP Tue Jul 15 03:50:54 UTC 2014 i686 i686 i386 GNU/Linux
  
-seviezhou@VirtualBox:~/Desktop$ lsb_release -a
+root@VirtualBox:~/Desktop$ lsb_release -a
 No LSB modules are available.
 Distributor ID: Ubuntu
 Description:    Ubuntu 12.04.5 LTS
 Release:    12.04
 Codename:   precise
  
-seviezhou@VirtualBox:~/Desktop$ gcc -v
+root@VirtualBox:~/Desktop$ gcc -v
 gcc version 4.6.3 (Ubuntu/Linaro 4.6.3-1ubuntu5)
 ```
 
@@ -66,7 +66,7 @@ int main() {
 编译链接:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ gcc -g test.c -o test
+root@VirtualBox:~/Desktop$ gcc -g test.c -o test
 ```
 
 ## Something about .dynamic
@@ -74,7 +74,7 @@ seviezhou@VirtualBox:~/Desktop$ gcc -g test.c -o test
 ELF的`.dynamic section`里包含了和重定位有关的很多信息，完整的`.dynamic`段:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -d test
+root@VirtualBox:~/Desktop$ readelf -d test
 
 Dynamic section at offset 0xf28 contains 20 entries:
   Tag        Type                         Name/Value
@@ -106,7 +106,7 @@ Dynamic section at offset 0xf28 contains 20 entries:
 `GOT`表的起始地址:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -d test | grep GOT
+root@VirtualBox:~/Desktop$ readelf -d test | grep GOT
  0x00000003 (PLTGOT)                     0x8049ff4
 ```
 
@@ -134,7 +134,7 @@ gdb-peda$ x/x 0x8049ff4+0xc
 `PLTRELSZ`指定了`.rel.plt`大小，`RELENT`指定每一项大小，`PLTREL`指定条目类型为`REL`，`JMPREL`对应`.rel.plt`地址，保存了重定位表，保存的是结构体信息:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -d test | grep REL
+root@VirtualBox:~/Desktop$ readelf -d test | grep REL
  0x00000002 (PLTRELSZ)                   40 (bytes)
  0x00000014 (PLTREL)                     REL
  0x00000017 (JMPREL)                     0x80482cc
@@ -170,7 +170,7 @@ gdb-peda$ x/2x 0x80482cc+0x8
 再看:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -r test
+root@VirtualBox:~/Desktop$ readelf -r test
 
 Relocation section '.rel.dyn' at offset 0x2c4 contains 1 entries:
  Offset     Info    Type            Sym.Value  Sym. Name
@@ -193,7 +193,7 @@ Relocation section '.rel.plt' at offset 0x2cc contains 5 entries:
 还有一个需要注意的就是字符串表，保存了一些符号表，在重定位时会用到:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -d test | grep STRTAB
+root@VirtualBox:~/Desktop$ readelf -d test | grep STRTAB
  0x00000005 (STRTAB)                     0x804823c
 ```
 查看:
@@ -276,7 +276,7 @@ Elf32_Sym *sym = SYMTAB[ELF32_R_SYM(p->r_info)]
 `.dynsym`有关的信息为:
 
 ```python
-seviezhou@VirtualBox:~/Desktop$ readelf -d test | grep SYM
+root@VirtualBox:~/Desktop$ readelf -d test | grep SYM
  0x00000006 (SYMTAB)                     0x80481cc
  0x0000000b (SYMENT)                     16 (bytes)
 ```
