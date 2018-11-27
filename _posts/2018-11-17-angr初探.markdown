@@ -26,63 +26,64 @@ angr是一个用于分析二进制文件的python框架。它专注于静态和�
 
 sources.list用官方的
 
-	#deb cdrom:[Ubuntu 14.04.4 LTS _Trusty Tahr_ - Release amd64 (20160217.1)]/ trusty main restricted
-	
-	# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to
-	# newer versions of the distribution.
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty main restricted
-	
-	## Major bug fix updates produced after the final release of the
-	## distribution.
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted
-	
-	## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu
-	## team. Also, please note that software in universe WILL NOT receive any
-	## review or updates from the Ubuntu security team.
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty universe
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty universe
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates universe
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates universe
-	
-	## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu 
-	## team, and may not be under a free licence. Please satisfy yourself as to 
-	## your rights to use the software. Also, please note that software in 
-	## multiverse WILL NOT receive any review or updates from the Ubuntu
-	## security team.
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty multiverse
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty multiverse
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates multiverse
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates multiverse
-	
-	## N.B. software from this repository may not have been tested as
-	## extensively as that contained in the main release, although it includes
-	## newer versions of some applications which may provide useful features.
-	## Also, please note that software in backports WILL NOT receive any review
-	## or updates from the Ubuntu security team.
-	deb http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
-	deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
-	
-	deb http://security.ubuntu.com/ubuntu trusty-security main restricted
-	deb-src http://security.ubuntu.com/ubuntu trusty-security main restricted
-	deb http://security.ubuntu.com/ubuntu trusty-security universe
-	deb-src http://security.ubuntu.com/ubuntu trusty-security universe
-	deb http://security.ubuntu.com/ubuntu trusty-security multiverse
-	deb-src http://security.ubuntu.com/ubuntu trusty-security multiverse
-	
-	## Uncomment the following two lines to add software from Canonical's
-	## 'partner' repository.
-	## This software is not part of Ubuntu, but is offered by Canonical and the
-	## respective vendors as a service to Ubuntu users.
-	# deb http://archive.canonical.com/ubuntu trusty partner
-	# deb-src http://archive.canonical.com/ubuntu trusty partner
-	
-	## This software is not part of Ubuntu, but is offered by third-party
-	## developers who want to ship their latest software.
-	deb http://extras.ubuntu.com/ubuntu trusty main
-	deb-src http://extras.ubuntu.com/ubuntu trusty main
+```shell
+#deb cdrom:[Ubuntu 14.04.4 LTS _Trusty Tahr_ - Release amd64 (20160217.1)]/ trusty main restricted
 
+# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to
+# newer versions of the distribution.
+deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty main restricted
+
+## Major bug fix updates produced after the final release of the
+## distribution.
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted
+
+## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu
+## team. Also, please note that software in universe WILL NOT receive any
+## review or updates from the Ubuntu security team.
+deb http://us.archive.ubuntu.com/ubuntu/ trusty universe
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty universe
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates universe
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates universe
+
+## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu 
+## team, and may not be under a free licence. Please satisfy yourself as to 
+## your rights to use the software. Also, please note that software in 
+## multiverse WILL NOT receive any review or updates from the Ubuntu
+## security team.
+deb http://us.archive.ubuntu.com/ubuntu/ trusty multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty multiverse
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates multiverse
+
+## N.B. software from this repository may not have been tested as
+## extensively as that contained in the main release, although it includes
+## newer versions of some applications which may provide useful features.
+## Also, please note that software in backports WILL NOT receive any review
+## or updates from the Ubuntu security team.
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
+
+deb http://security.ubuntu.com/ubuntu trusty-security main restricted
+deb-src http://security.ubuntu.com/ubuntu trusty-security main restricted
+deb http://security.ubuntu.com/ubuntu trusty-security universe
+deb-src http://security.ubuntu.com/ubuntu trusty-security universe
+deb http://security.ubuntu.com/ubuntu trusty-security multiverse
+deb-src http://security.ubuntu.com/ubuntu trusty-security multiverse
+
+## Uncomment the following two lines to add software from Canonical's
+## 'partner' repository.
+## This software is not part of Ubuntu, but is offered by Canonical and the
+## respective vendors as a service to Ubuntu users.
+# deb http://archive.canonical.com/ubuntu trusty partner
+# deb-src http://archive.canonical.com/ubuntu trusty partner
+
+## This software is not part of Ubuntu, but is offered by third-party
+## developers who want to ship their latest software.
+deb http://extras.ubuntu.com/ubuntu trusty main
+deb-src http://extras.ubuntu.com/ubuntu trusty main
+```
 1，首先`apt-get update` 一下
 
 2，安装依赖环境
@@ -95,10 +96,12 @@ sources.list用官方的
 
 4，添加`mkvirutalenv`环境变量
 
-	mkdir $HOME/.virtualenvs
-	export WORKON_HOME=$HOME/.virtualenvs
-	source /usr/share/virtualenvwrapper/virtualenvwrapper.sh  #此路径可能因为系统环境或安装方式不同而不同
-	source ~/.bashrc
+```shell
+mkdir $HOME/.virtualenvs
+export WORKON_HOME=$HOME/.virtualenvs
+source /usr/share/virtualenvwrapper/virtualenvwrapper.sh  #此路径可能因为系统环境或安装方式不同而不同
+source ~/.bashrc
+```
 
 5，新建一个python的虚拟机环境
 
@@ -114,19 +117,23 @@ sources.list用官方的
 
 8，上面的`mkvirutalenv`环境变量如果始终设置不成功，可以用麻烦一点的方法，先找到`virtualenv.py`的位置
 
-	find / -name 'virtualenv.py'
-/
+```shell
+find / -name 'virtualenv.py'
 
-	root@ubuntu:/home/chris# find / -name 'virtualenv.py'
-	/usr/lib/python2.7/dist-packages/virtualenv.py
-	/usr/local/lib/python2.7/dist-packages/virtualenv.py
+----------------------------------------------------
 
+root@ubuntu:/home/chris# find / -name 'virtualenv.py'
+/usr/lib/python2.7/dist-packages/virtualenv.py
+/usr/local/lib/python2.7/dist-packages/virtualenv.py
+```
 
 9，然后进入所在目录,手动执行py脚本创建虚拟环境
     
+```shell
     cd /usr/local/lib/python2.7/dist-packages/
 	# venvName为创建的虚拟环境名,这一步等效于第5步
 	python virtualenv.py venvName(angr)
+```
 
 10，之后就在虚拟环境里正常安装angr
 
@@ -134,19 +141,19 @@ sources.list用官方的
 
 11，这样的话启动方式就和配好环境变量的启动方式不同，离开方式一样。
 
+```shell
+cd ENV
+# ENV为之前创建的虚拟环境文件夹路径
+source ./bin/activate
 
-	cd ENV
-	# ENV为之前创建的虚拟环境文件夹路径
-	source ./bin/activate
+-----------------------------------------------------------------------------------
 
-/
-
-	root@ubuntu:~#    cd /usr/local/lib/python2.7/dist-packages/angr
-	root@ubuntu:/usr/local/lib/python2.7/dist-packages/angr#    source ./bin/activate
-	(angr) root@ubuntu:/usr/local/lib/python2.7/dist-packages/angr#    cd ~
-	(angr) root@ubuntu:~#    deactivate
-	root@ubuntu:~#  
-
+root@ubuntu:~#    cd /usr/local/lib/python2.7/dist-packages/angr
+root@ubuntu:/usr/local/lib/python2.7/dist-packages/angr#    source ./bin/activate
+(angr) root@ubuntu:/usr/local/lib/python2.7/dist-packages/angr#    cd ~
+(angr) root@ubuntu:~#    deactivate
+root@ubuntu:~#  
+```
 后期可以自己写个shell脚本一条命令进入angr环境
 
 
@@ -160,18 +167,19 @@ sources.list用官方的
 
 好吧流程其实挺简单的，但是分析算法就有点耗时间了，以前我都是人脑分析，撸py解密脚本，现在我们直接上angr
 
-	import angr
-	
-	def main():
-	    p = angr.Project("martricks")
-	    simgr = p.factory.simulation_manager(p.factory.full_init_state())
-	    simgr.explore(find=0x400A84, avoid=0x400A90)
-	
-	    return simgr.found[0].posix.dumps(0).strip('\0\n')
-	
-	if __name__ == '__main__':
-	   print main()
+```python
+import angr
 
+def main():
+    p = angr.Project("martricks")
+    simgr = p.factory.simulation_manager(p.factory.full_init_state())
+    simgr.explore(find=0x400A84, avoid=0x400A90)
+
+    return simgr.found[0].posix.dumps(0).strip('\0\n')
+
+if __name__ == '__main__':
+   print main()
+```
 
 Explorer这个方法可以设定说要找到哪个程式执行的位址，可以用find=(addr1)来找，和使用avoid=(addr2)来避免找到某位址。设定find=(addr1)有点像是在下断点，但注意位址必须是基本区块（basic block）的开头 ，否则angr并不会找到该位址，导致最后该路径会被归类成deadended而不是found。
 

