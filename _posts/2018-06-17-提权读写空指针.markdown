@@ -52,9 +52,10 @@ tags:
 
 addr 存放的是线性地址
 
-	pPDE = (int*)(0xc0600000 + ((addr >> 18) & 0x3ff8));
-	pPTE = (int*)(0xc0000000 + ((addr >> 9) & 0x7ffff8));
-
+```c
+pPDE = (int*)(0xc0600000 + ((addr >> 18) & 0x3ff8));
+pPTE = (int*)(0xc0000000 + ((addr >> 9) & 0x7ffff8));
+```
 ## 0x01 原理简述
 
 用windbg在系统IDT（中断描述符表）中安装一个中断门，程序通过int指令调用。通过调用，跳转到我们自己写的函数，通过公式：0xc0000000 + ((addr >> 9) & 0x7ffff8)，计算出PTE地址，为0线性地址的PTE地址赋值为已存在物理页的PTE地址，这样就为0地址挂载物理页，可访问。
@@ -63,69 +64,70 @@ addr 存放的是线性地址
 
 > 先贴出完整代码。
 
-	#include <windows.h>
-	#include<stdio.h>
-	
-	__declspec(naked) 
-	void MyPage() {
-	    __asm {
-	        push ebp
-				mov ebp, esp
-				sub esp, 0x100
-				push ebx
-				push esi
-				push edi
-	    }
-		
-	    DWORD* pPTE;    
-	    DWORD* pNullPTE; 
-		
-	    pNullPTE = (DWORD*)0xc0000000; // #0地址的PTE线性地址
-	    
-	    pPTE = (DWORD*)(0xc0000000 + ((0x60000000 >> 9) & 0x7ffff8));   // #目标线性地址的PTE线性地址
-		
-	    *pNullPTE = *pPTE;  // #为0地址的PTE挂上目标线性地址的PTE(物理页)
-		
-	    __asm {
-	        pop edi
-				pop esi
-				pop ebx
-				mov esp, ebp
-				pop ebp
-				iretd   // #注意返回
-	    }
-	}
-	
-	
-	__declspec(naked)
-	void Page() {
-	    __asm {
-	        int 0x20   
-				ret
-	    }
-	}
-	
-	
-	int main(int argc, char* argv[])
-	{
-		char *str="hello world";
-	    DWORD* addr = (DWORD*)VirtualAlloc((LPVOID)0x60000000, 4, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);  
-	    *addr = (DWORD)str;
-		
-		 #/*为0x60000000线性地址开辟堆内存，里面存有str的地址*/
-		
-	    if (addr ==NULL) {
-	        printf("Error alloc!\n");
-	        return -1;
-	    }
-		
-	    Page();
-	    printf("读 0 地址数据:\n");
-	    printf("*NULL = %s\n", *(DWORD*)0);
-		getchar();
-	    return 0;
-	}
+```c
+#include <windows.h>
+#include<stdio.h>
 
+__declspec(naked) 
+void MyPage() {
+    __asm {
+        push ebp
+			mov ebp, esp
+			sub esp, 0x100
+			push ebx
+			push esi
+			push edi
+    }
+	
+    DWORD* pPTE;    
+    DWORD* pNullPTE; 
+	
+    pNullPTE = (DWORD*)0xc0000000; // #0地址的PTE线性地址
+    
+    pPTE = (DWORD*)(0xc0000000 + ((0x60000000 >> 9) & 0x7ffff8));   // #目标线性地址的PTE线性地址
+	
+    *pNullPTE = *pPTE;  // #为0地址的PTE挂上目标线性地址的PTE(物理页)
+	
+    __asm {
+        pop edi
+			pop esi
+			pop ebx
+			mov esp, ebp
+			pop ebp
+			iretd   // #注意返回
+    }
+}
+
+
+__declspec(naked)
+void Page() {
+    __asm {
+        int 0x20   
+			ret
+    }
+}
+
+
+int main(int argc, char* argv[])
+{
+	char *str="hello world";
+    DWORD* addr = (DWORD*)VirtualAlloc((LPVOID)0x60000000, 4, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);  
+    *addr = (DWORD)str;
+	
+	 #/*为0x60000000线性地址开辟堆内存，里面存有str的地址*/
+	
+    if (addr ==NULL) {
+        printf("Error alloc!\n");
+        return -1;
+    }
+	
+    Page();
+    printf("读 0 地址数据:\n");
+    printf("*NULL = %s\n", *(DWORD*)0);
+	getchar();
+    return 0;
+}
+```
 1,在 main 函数起始位置下断点，在 VC6.0 中观察到函数 MyPage的函数地址，在我的环境里是 0x00401030。
 
 2,构造中断门描述符 0040ee00`00081030 (构造原理这里就不细说了)

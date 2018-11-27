@@ -36,127 +36,134 @@ tags:
 ## 0x01 代码实现
 1.提升进程为DEBUG权限
 
-	bool AdjustProcessTokenPrivilege()  
-	{  
-	    LUID luidTmp;  
-	    HANDLE hToken;  
-	    TOKEN_PRIVILEGES tkp;  
-	  
-	    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))  
-	        return false;  
-	  
-	  
-	    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luidTmp))  
-	    {       
-	        CloseHandle(hToken);  
-	        return FALSE;  
-	    }  
-	    tkp.PrivilegeCount = 1;  
-	    tkp.Privileges[0].Luid = luidTmp;  
-	    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;  
-	  
-	    if(!AdjustTokenPrivileges(hToken, FALSE, &tkp, sizeof(tkp), NULL, NULL))  
-	    {  
-	        CloseHandle(hToken);  
-	        return FALSE;  
-	    }  
-	    return true;  
-	}  
+```c
+bool AdjustProcessTokenPrivilege()  
+{  
+    LUID luidTmp;  
+    HANDLE hToken;  
+    TOKEN_PRIVILEGES tkp;  
+  
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))  
+        return false;  
+  
+  
+    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luidTmp))  
+    {       
+        CloseHandle(hToken);  
+        return FALSE;  
+    }  
+    tkp.PrivilegeCount = 1;  
+    tkp.Privileges[0].Luid = luidTmp;  
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;  
+  
+    if(!AdjustTokenPrivileges(hToken, FALSE, &tkp, sizeof(tkp), NULL, NULL))  
+    {  
+        CloseHandle(hToken);  
+        return FALSE;  
+    }  
+    return true;  
+}  
+```
 
 2.获取宿主进程的pid
 
-	DWORD GetPid(char *szName)
+```c
+DWORD GetPid(char *szName)
+{
+	HANDLE hprocessSnap=NULL;
+	PROCESSENTRY32  pe32 ={0};
+	hprocessSnap =CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
+	if(hprocessSnap == (HANDLE)-1){return 0;}
+	pe32.dwSize=sizeof(PROCESSENTRY32);
+	if(Process32First(hprocessSnap,&pe32))
 	{
-		HANDLE hprocessSnap=NULL;
-		PROCESSENTRY32  pe32 ={0};
-		hprocessSnap =CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
-		if(hprocessSnap == (HANDLE)-1){return 0;}
-		pe32.dwSize=sizeof(PROCESSENTRY32);
-		if(Process32First(hprocessSnap,&pe32))
-		{
-			do{
-			if(!strcmp(szName,pe32.szExeFile))
-				return (int)pe32.th32ProcessID;
-			}while(Process32Next(hprocessSnap,&pe32));
-		}
-		else
-			CloseHandle(hprocessSnap);
-		return 0;
+		do{
+		if(!strcmp(szName,pe32.szExeFile))
+			return (int)pe32.th32ProcessID;
+		}while(Process32Next(hprocessSnap,&pe32));
 	}
-
+	else
+		CloseHandle(hprocessSnap);
+	return 0;
+}
+```
 3.获取目标进程句柄，在目标进程分配dll路径名长度+1大小的内存,并拷贝dll路径名字到目标进程的内存
 
-	hProcess=OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessID);
-	if(hProcess==NULL)
-	{
-		printf("OPENPROCESS Error ! \n");
-		return FALSE;
-	}
+```c
+hProcess=OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessID);
+if(hProcess==NULL)
+{
+	printf("OPENPROCESS Error ! \n");
+	return FALSE;
+}
 
-	dwLength =strlen(szDllPathName)+1;
-	lpAllocAddr=VirtualAllocEx(hProcess,NULL,dwLength,MEM_COMMIT,PAGE_READWRITE);
-	if(lpAllocAddr==NULL)
-	{
-		printf("VIRTUALALLOCEX Error !  \n");
-		GetLastError();
-		CloseHandle(hProcess);
-		return FALSE;
-	}
+dwLength =strlen(szDllPathName)+1;
+lpAllocAddr=VirtualAllocEx(hProcess,NULL,dwLength,MEM_COMMIT,PAGE_READWRITE);
+if(lpAllocAddr==NULL)
+{
+	printf("VIRTUALALLOCEX Error !  \n");
+	GetLastError();
+	CloseHandle(hProcess);
+	return FALSE;
+}
 
-	bRet = WriteProcessMemory(hProcess,lpAllocAddr,szDllPathName,dwLength,NULL);
-	if(!bRet)
-	{
-		printf("WriteProcessMemory Error ! \n");
-		GetLastError();
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-
+bRet = WriteProcessMemory(hProcess,lpAllocAddr,szDllPathName,dwLength,NULL);
+if(!bRet)
+{
+	printf("WriteProcessMemory Error ! \n");
+	GetLastError();
+	CloseHandle(hProcess);
+	return FALSE;
+}
+```
 4.由于kernel32.dll基址相同，所以利用GetModuleHandle()和GetProcAddress() 获取kernel模块基址和找到LoadLibrary函数地址(两程序中地址一样).
 
-	hModule =GetModuleHandle("kernel32.dll");
-	if (!hModule)
-	{
-		printf("GetModuleHandle Error !\n");
-		GetLastError();
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-	
-	dwLoadAddr=(DWORD)GetProcAddress(hModule,"LoadLibraryA");
-	if (!dwLoadAddr)
-	{
-		printf("GetProcAddress Error !\n");
-		GetLastError();
-		CloseHandle(hProcess);
-		CloseHandle(hModule);
-		return FALSE;
-	}
+```c
+hModule =GetModuleHandle("kernel32.dll");
+if (!hModule)
+{
+	printf("GetModuleHandle Error !\n");
+	GetLastError();
+	CloseHandle(hProcess);
+	return FALSE;
+}
 
+dwLoadAddr=(DWORD)GetProcAddress(hModule,"LoadLibraryA");
+if (!dwLoadAddr)
+{
+	printf("GetProcAddress Error !\n");
+	GetLastError();
+	CloseHandle(hProcess);
+	CloseHandle(hModule);
+	return FALSE;
+}
+```
 5.万事俱备，只欠东风，还差最后一步。CreateRemoteThread()这个函数，这时只要将你得到的LoadLibraryA函数地址传进去，留意一下参数
 
-	HANDLE WINAPI CreateRemoteThread（
-	  _In_ HANDLE hProcess，
-	  _In_ LPSECURITY_ATTRIBUTES lpThreadAttributes，
-	  _In_ SIZE_T dwStackSize，
-	  _In_ LPTHREAD_START_ROUTINE lpStartAddress，
-	  _In_ LPVOID lpParameter，
-	  _In_ DWORD dwCreationFlags，
-	  _Out_ LPDWORD lpThreadId
-	）;
-
+```c
+HANDLE WINAPI CreateRemoteThread（
+  _In_ HANDLE hProcess，
+  _In_ LPSECURITY_ATTRIBUTES lpThreadAttributes，
+  _In_ SIZE_T dwStackSize，
+  _In_ LPTHREAD_START_ROUTINE lpStartAddress，
+  _In_ LPVOID lpParameter，
+  _In_ DWORD dwCreationFlags，
+  _Out_ LPDWORD lpThreadId
+）;
+```
 这里第4个参数为指向由线程执行的LPTHREAD_START_ROUTINE类型的应用程序定义函数的指针，表示远程进程中线程的起始地址。所以我们要将我们的LoadLibraryA函数地址强制转换成LPTHREAD_START_ROUTINE类型。第五个为写入目标进程参数的地址。代码如下：
 
-	hThread =CreateRemoteThread(hProcess,NULL,0,(LPTHREAD_START_ROUTINE)dwLoadAddr,lpAllocAddr,0,NULL);
-	if (!hThread)
-	{
-		printf("CreatRemoteTread Error !\n");
-		GetLastError();
-		CloseHandle(hProcess);
-		CloseHandle(hModule);
-		return FALSE;
-	}
-
+```c
+hThread =CreateRemoteThread(hProcess,NULL,0,(LPTHREAD_START_ROUTINE)dwLoadAddr,lpAllocAddr,0,NULL);
+if (!hThread)
+{
+	printf("CreatRemoteTread Error !\n");
+	GetLastError();
+	CloseHandle(hProcess);
+	CloseHandle(hModule);
+	return FALSE;
+}
+```
 ## 0x02 运行结果
 * 测试环境为win10 x64
 * 实验程序为[crackme.exe](https://github.com/yxshyj/project/blob/master/other/crackme.exe)
@@ -170,151 +177,152 @@ tags:
 
 ## 0x03 完整代码
 
-	#include<stdio.h>
-	#include<windows.h>
-	#include<stdlib.h>
-	#include<Tlhelp32.h.>
-	
-	bool AdjustProcessTokenPrivilege()  
-	{  
-	    LUID luidTmp;  
-	    HANDLE hToken;  
-	    TOKEN_PRIVILEGES tkp;  
-		
-	    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))  
-	        return false;  
-		
-		
-	    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luidTmp))  
-	    {       
-	        CloseHandle(hToken);  
-	        return FALSE;  
-	    }  
-	    tkp.PrivilegeCount = 1;  
-	    tkp.Privileges[0].Luid = luidTmp;  
-	    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;  
-		
-	    if(!AdjustTokenPrivileges(hToken, FALSE, &tkp, sizeof(tkp), NULL, NULL))  
-	    {  
-	        CloseHandle(hToken);  
-	        return FALSE;  
-	    }  
-	    return true;  
-	}  
-	
-	DWORD GetPid(char *szName)
-	{
-		HANDLE hprocessSnap=NULL;
-		PROCESSENTRY32  pe32 ={0};
-		hprocessSnap =CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
-		if(hprocessSnap == (HANDLE)-1){return 0;}
-		pe32.dwSize=sizeof(PROCESSENTRY32);
-		if(Process32First(hprocessSnap,&pe32))
-		{
-			do{
-				if(!strcmp(szName,pe32.szExeFile))
-					return (int)pe32.th32ProcessID;
-			}while(Process32Next(hprocessSnap,&pe32));
-		}
-		else
-			CloseHandle(hprocessSnap);
-		return 0;
-	}
-	
-	
-	
-	BOOL LoadDll(DWORD dwProcessID,char *szDllPathName)
-	{
-		BOOL bRet;
-		HANDLE hProcess;
-		HANDLE hThread;
-		DWORD dwLength;
-		DWORD dwLoadAddr;
-		LPVOID lpAllocAddr;
-		HMODULE hModule;
-		
-		bRet=0;
-		dwLoadAddr=0;
-		hProcess =0;
-		
-		// #0.提升进程为DEBUG权限
-		if(!AdjustProcessTokenPrivilege())  
-		{			printf("提权失败\n");
-		return 0;  
-		}
-		
-		// #1.获取进程句柄
-		hProcess=OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessID);
-		if(hProcess==NULL)
-		{
-			printf("OPENPROCESS Error ! \n");
-			return FALSE;
-		}
-		// #2.计算dll路径长度(加上'\0')
-		dwLength =strlen(szDllPathName)+1;
-		
-		// #3.在目标进程分配内存
-		lpAllocAddr=VirtualAllocEx(hProcess,NULL,dwLength,MEM_COMMIT,PAGE_READWRITE);
-		
-		if(lpAllocAddr==NULL)
-		{
-			printf("VIRTUALALLOCEX Error !  \n");
-			GetLastError();
-			CloseHandle(hProcess);
-			return FALSE;
-		}
-		
-		// #4.拷贝dll路径名字到目标进程的内存
-		bRet = WriteProcessMemory(hProcess,lpAllocAddr,szDllPathName,dwLength,NULL);
-		
-		if(!bRet)
-		{
-			printf("WriteProcessMemory Error ! \n");
-			GetLastError();
-			CloseHandle(hProcess);
-			return FALSE;
-		}
-		// #5.获取模块地址
-		hModule =GetModuleHandle("kernel32.dll");
-		if (!hModule)
-		{
-			printf("GetModuleHandle Error !\n");
-			GetLastError();
-			CloseHandle(hProcess);
-			return FALSE;
-		}
-		// #6.获取LoadLibraryA 函数地址
-		dwLoadAddr=(DWORD)GetProcAddress(hModule,"LoadLibraryA");
-		if (!dwLoadAddr)
-		{
-			printf("GetProcAddress Error !\n");
-			GetLastError();
-			CloseHandle(hProcess);
-			CloseHandle(hModule);
-			return FALSE;
-		}
-		// #7.创建远程线程,加载dll
-		hThread =CreateRemoteThread(hProcess,NULL,0,(LPTHREAD_START_ROUTINE)dwLoadAddr,lpAllocAddr,0,NULL);
-		if (!hThread)
-		{
-			printf("CreatRemoteTread Error !\n");
-			GetLastError();
-			CloseHandle(hProcess);
-			CloseHandle(hModule);
-			return FALSE;
-		}
-		// #8.关闭进程句柄
-		CloseHandle(hProcess);
-		
-		return TRUE;
-	}
-	
-	int main()
-	{
-		LoadDll(GetPid("目标进程名"),"dll路径名");
-		return 0;
-	}
+```c
+#include<stdio.h>
+#include<windows.h>
+#include<stdlib.h>
+#include<Tlhelp32.h.>
 
+bool AdjustProcessTokenPrivilege()  
+{  
+    LUID luidTmp;  
+    HANDLE hToken;  
+    TOKEN_PRIVILEGES tkp;  
+	
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))  
+        return false;  
+	
+	
+    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luidTmp))  
+    {       
+        CloseHandle(hToken);  
+        return FALSE;  
+    }  
+    tkp.PrivilegeCount = 1;  
+    tkp.Privileges[0].Luid = luidTmp;  
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;  
+	
+    if(!AdjustTokenPrivileges(hToken, FALSE, &tkp, sizeof(tkp), NULL, NULL))  
+    {  
+        CloseHandle(hToken);  
+        return FALSE;  
+    }  
+    return true;  
+}  
+
+DWORD GetPid(char *szName)
+{
+	HANDLE hprocessSnap=NULL;
+	PROCESSENTRY32  pe32 ={0};
+	hprocessSnap =CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
+	if(hprocessSnap == (HANDLE)-1){return 0;}
+	pe32.dwSize=sizeof(PROCESSENTRY32);
+	if(Process32First(hprocessSnap,&pe32))
+	{
+		do{
+			if(!strcmp(szName,pe32.szExeFile))
+				return (int)pe32.th32ProcessID;
+		}while(Process32Next(hprocessSnap,&pe32));
+	}
+	else
+		CloseHandle(hprocessSnap);
+	return 0;
+}
+
+
+
+BOOL LoadDll(DWORD dwProcessID,char *szDllPathName)
+{
+	BOOL bRet;
+	HANDLE hProcess;
+	HANDLE hThread;
+	DWORD dwLength;
+	DWORD dwLoadAddr;
+	LPVOID lpAllocAddr;
+	HMODULE hModule;
+	
+	bRet=0;
+	dwLoadAddr=0;
+	hProcess =0;
+	
+	// #0.提升进程为DEBUG权限
+	if(!AdjustProcessTokenPrivilege())  
+	{			printf("提权失败\n");
+	return 0;  
+	}
+	
+	// #1.获取进程句柄
+	hProcess=OpenProcess(PROCESS_ALL_ACCESS,FALSE,dwProcessID);
+	if(hProcess==NULL)
+	{
+		printf("OPENPROCESS Error ! \n");
+		return FALSE;
+	}
+	// #2.计算dll路径长度(加上'\0')
+	dwLength =strlen(szDllPathName)+1;
+	
+	// #3.在目标进程分配内存
+	lpAllocAddr=VirtualAllocEx(hProcess,NULL,dwLength,MEM_COMMIT,PAGE_READWRITE);
+	
+	if(lpAllocAddr==NULL)
+	{
+		printf("VIRTUALALLOCEX Error !  \n");
+		GetLastError();
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+	
+	// #4.拷贝dll路径名字到目标进程的内存
+	bRet = WriteProcessMemory(hProcess,lpAllocAddr,szDllPathName,dwLength,NULL);
+	
+	if(!bRet)
+	{
+		printf("WriteProcessMemory Error ! \n");
+		GetLastError();
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+	// #5.获取模块地址
+	hModule =GetModuleHandle("kernel32.dll");
+	if (!hModule)
+	{
+		printf("GetModuleHandle Error !\n");
+		GetLastError();
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+	// #6.获取LoadLibraryA 函数地址
+	dwLoadAddr=(DWORD)GetProcAddress(hModule,"LoadLibraryA");
+	if (!dwLoadAddr)
+	{
+		printf("GetProcAddress Error !\n");
+		GetLastError();
+		CloseHandle(hProcess);
+		CloseHandle(hModule);
+		return FALSE;
+	}
+	// #7.创建远程线程,加载dll
+	hThread =CreateRemoteThread(hProcess,NULL,0,(LPTHREAD_START_ROUTINE)dwLoadAddr,lpAllocAddr,0,NULL);
+	if (!hThread)
+	{
+		printf("CreatRemoteTread Error !\n");
+		GetLastError();
+		CloseHandle(hProcess);
+		CloseHandle(hModule);
+		return FALSE;
+	}
+	// #8.关闭进程句柄
+	CloseHandle(hProcess);
+	
+	return TRUE;
+}
+
+int main()
+{
+	LoadDll(GetPid("目标进程名"),"dll路径名");
+	return 0;
+}
+```
 
 ## 0x04 总结感悟
 现已加入安全软件检测豪华套餐......

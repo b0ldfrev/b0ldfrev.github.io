@@ -22,32 +22,87 @@ IAT（Import Address Table，输入地址表）：当PE文件装入的时候，W
 
 1,HOOK函数MessageBox，首先定义一个用于替换的MyMessageBox函数。
 
-	int WINAPI MyMessageBox(HWND hWnd,LPCSTR lpText,LPCSTR lpCaption,UINT uType)
-	{
-		char lpNewText[]="修改后的内容";
-		typedef int (WINAPI *PFNMESSAGEBOX)(HWND,LPCSTR,LPCSTR,UINT);
-		int ret=((PFNMESSAGEBOX)g_dwOldAddr)(hWnd,lpNewText,lpCaption,uType);
-		return ret;
-	}
-
+```c
+int WINAPI MyMessageBox(HWND hWnd,LPCSTR lpText,LPCSTR lpCaption,UINT uType)
+{
+	char lpNewText[]="修改后的内容";
+	typedef int (WINAPI *PFNMESSAGEBOX)(HWND,LPCSTR,LPCSTR,UINT);
+	int ret=((PFNMESSAGEBOX)g_dwOldAddr)(hWnd,lpNewText,lpCaption,uType);
+	return ret;
+}
+```
 2,得到模块基址，并找到该PE模块中IAT表的位置
 
+```c
+dwImageBase=(DWORD)::GetModuleHandle(NULL);
+pNtHeader=(PIMAGE_NT_HEADERS)(dwImageBase+((PIMAGE_DOS_HEADER)dwImageBase)->e_lfanew);
+pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)(dwImageBase+pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
+```
+3,遍历IAt表,找到要HOOK的MessageBox函数地址,找到后先修改内存页的属性为PAGE_READWRITE,再修改当前位置为MyMessageBox函数地址，恢复内存页属性。
+
+```c
+while(pImportDescriptor->FirstThunk!=0 && bFlag == FALSE)
+{
+	pFuncAddr=(PDWORD)(dwImageBase+pImportDescriptor->FirstThunk);
+	
+	while(*pFuncAddr)
+	{
+		if(dwOldAddr == *pFuncAddr)
+		{
+			VirtualProtect(pFuncAddr,sizeof(DWORD),PAGE_READWRITE,&dwOldProtect);
+			*pFuncAddr=dwNewAddr;
+			VirtualProtect(pFuncAddr,sizeof(DWORD),dwOldProtect,0);
+			bFlag=TRUE; 
+			break;
+		}
+		pFuncAddr=(PDWORD)((DWORD)pFuncAddr+sizeof(DWORD));
+	}
+	pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pImportDescriptor+sizeof(IMAGE_IMPORT_DESCRIPTOR));
+}
+```
+
+## 0x02 完整代码
+
+>这是个dll文件
+
+```c
+#include "stdafx.h"
+#include<stdio.h>
+#include<windows.h>
+#include<stdlib.h>
+#include<Tlhelp32.h.>
+
+DWORD g_dwIATHookFlag=0; // #HOOK状态 (1 HOOK  0 未HOOK)
+DWORD g_dwOldAddr;
+DWORD g_dwNewAddr;
+
+BOOL SetIATHook(DWORD dwOldAddr,DWORD dwNewAddr)
+{
+	BOOL bFlag =FALSE;
+	DWORD dwImageBase=0;
+	PDWORD pFuncAddr=NULL;
+	PIMAGE_NT_HEADERS pNtHeader =NULL;
+	PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor=NULL;
+	DWORD dwOldProtect=0;
+	
+	// #得到模块基址
 	dwImageBase=(DWORD)::GetModuleHandle(NULL);
 	pNtHeader=(PIMAGE_NT_HEADERS)(dwImageBase+((PIMAGE_DOS_HEADER)dwImageBase)->e_lfanew);
 	pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)(dwImageBase+pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
-
-3,遍历IAt表,找到要HOOK的MessageBox函数地址,找到后先修改内存页的属性为PAGE_READWRITE,再修改当前位置为MyMessageBox函数地址，恢复内存页属性。
-
+	
+	// #遍历IAt表 找到这个函数地址
 	while(pImportDescriptor->FirstThunk!=0 && bFlag == FALSE)
 	{
 		pFuncAddr=(PDWORD)(dwImageBase+pImportDescriptor->FirstThunk);
 		
 		while(*pFuncAddr)
 		{
+			// #找到要HOOK的函数，先修改内存的属性
 			if(dwOldAddr == *pFuncAddr)
 			{
 				VirtualProtect(pFuncAddr,sizeof(DWORD),PAGE_READWRITE,&dwOldProtect);
 				*pFuncAddr=dwNewAddr;
+				// #恢复内存页属性
 				VirtualProtect(pFuncAddr,sizeof(DWORD),dwOldProtect,0);
 				bFlag=TRUE; 
 				break;
@@ -56,161 +111,109 @@ IAT（Import Address Table，输入地址表）：当PE文件装入的时候，W
 		}
 		pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pImportDescriptor+sizeof(IMAGE_IMPORT_DESCRIPTOR));
 	}
+	g_dwOldAddr=dwOldAddr;
+	g_dwNewAddr=dwNewAddr;
+	g_dwIATHookFlag=1;
+	return bFlag;
+}
 
 
-## 0x02 完整代码
-
->这是个dll文件
-
-
-	#include "stdafx.h"
-	#include<stdio.h>
-	#include<windows.h>
-	#include<stdlib.h>
-	#include<Tlhelp32.h.>
-	
-	DWORD g_dwIATHookFlag=0; // #HOOK状态 (1 HOOK  0 未HOOK)
-	DWORD g_dwOldAddr;
-	DWORD g_dwNewAddr;
-	
-	BOOL SetIATHook(DWORD dwOldAddr,DWORD dwNewAddr)
+BOOL UnIATHook()
+{
+	BOOL bFlag =FALSE;
+	DWORD dwImageBase=0;
+	PDWORD pFuncAddr=NULL;
+	PIMAGE_NT_HEADERS pNtHeader=NULL;
+	PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor =NULL;
+	DWORD dwOldProtect =0;
+	// #判断是否HOOK
+	if(!g_dwIATHookFlag)
 	{
-		BOOL bFlag =FALSE;
-		DWORD dwImageBase=0;
-		PDWORD pFuncAddr=NULL;
-		PIMAGE_NT_HEADERS pNtHeader =NULL;
-		PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor=NULL;
-		DWORD dwOldProtect=0;
-		
-		// #得到模块基址
-		dwImageBase=(DWORD)::GetModuleHandle(NULL);
-		pNtHeader=(PIMAGE_NT_HEADERS)(dwImageBase+((PIMAGE_DOS_HEADER)dwImageBase)->e_lfanew);
-		pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)(dwImageBase+pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
-		
-		// #遍历IAt表 找到这个函数地址
-		while(pImportDescriptor->FirstThunk!=0 && bFlag == FALSE)
-		{
-			pFuncAddr=(PDWORD)(dwImageBase+pImportDescriptor->FirstThunk);
-			
-			while(*pFuncAddr)
-			{
-				// #找到要HOOK的函数，先修改内存的属性
-				if(dwOldAddr == *pFuncAddr)
-				{
-					VirtualProtect(pFuncAddr,sizeof(DWORD),PAGE_READWRITE,&dwOldProtect);
-					*pFuncAddr=dwNewAddr;
-					// #恢复内存页属性
-					VirtualProtect(pFuncAddr,sizeof(DWORD),dwOldProtect,0);
-					bFlag=TRUE; 
-					break;
-				}
-				pFuncAddr=(PDWORD)((DWORD)pFuncAddr+sizeof(DWORD));
-			}
-			pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pImportDescriptor+sizeof(IMAGE_IMPORT_DESCRIPTOR));
-		}
-		g_dwOldAddr=dwOldAddr;
-		g_dwNewAddr=dwNewAddr;
-		g_dwIATHookFlag=1;
+		OutputDebugString("UnIATHook失败：尚未进行IAT HOOK!");
 		return bFlag;
 	}
+	// #得到模块基址
+	dwImageBase=(DWORD)::GetModuleHandle(NULL);
+	pNtHeader=(PIMAGE_NT_HEADERS)(dwImageBase+((PIMAGE_DOS_HEADER)dwImageBase)->e_lfanew);
+	pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)(dwImageBase+pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
 	
-	
-	BOOL UnIATHook()
+	// #遍历IAt表 找到这个函数地址
+	while(pImportDescriptor->FirstThunk!=0 && bFlag == FALSE)
 	{
-		BOOL bFlag =FALSE;
-		DWORD dwImageBase=0;
-		PDWORD pFuncAddr=NULL;
-		PIMAGE_NT_HEADERS pNtHeader=NULL;
-		PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor =NULL;
-		DWORD dwOldProtect =0;
-		// #判断是否HOOK
-		if(!g_dwIATHookFlag)
-		{
-			OutputDebugString("UnIATHook失败：尚未进行IAT HOOK!");
-			return bFlag;
-		}
-		// #得到模块基址
-		dwImageBase=(DWORD)::GetModuleHandle(NULL);
-		pNtHeader=(PIMAGE_NT_HEADERS)(dwImageBase+((PIMAGE_DOS_HEADER)dwImageBase)->e_lfanew);
-		pImportDescriptor=(PIMAGE_IMPORT_DESCRIPTOR)(dwImageBase+pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
+		pFuncAddr=(PDWORD)(dwImageBase+pImportDescriptor->FirstThunk);
 		
-		// #遍历IAt表 找到这个函数地址
-		while(pImportDescriptor->FirstThunk!=0 && bFlag == FALSE)
+		while(*pFuncAddr)
 		{
-			pFuncAddr=(PDWORD)(dwImageBase+pImportDescriptor->FirstThunk);
-			
-			while(*pFuncAddr)
+			// #找到要HOOK的函数，先修改内存的属性
+			if(g_dwNewAddr == *pFuncAddr)
 			{
-				// #找到要HOOK的函数，先修改内存的属性
-				if(g_dwNewAddr == *pFuncAddr)
-				{
-					// #找到被HOOK的函数
-					VirtualProtect(pFuncAddr,sizeof(DWORD),PAGE_READWRITE,&dwOldProtect);
-					*pFuncAddr=g_dwNewAddr;
-					// #恢复内存页属性
-					VirtualProtect(pFuncAddr,sizeof(DWORD),dwOldProtect,0);
-					bFlag=TRUE;
-					break;
-				}
-				pFuncAddr++;
+				// #找到被HOOK的函数
+				VirtualProtect(pFuncAddr,sizeof(DWORD),PAGE_READWRITE,&dwOldProtect);
+				*pFuncAddr=g_dwNewAddr;
+				// #恢复内存页属性
+				VirtualProtect(pFuncAddr,sizeof(DWORD),dwOldProtect,0);
+				bFlag=TRUE;
+				break;
 			}
-			pImportDescriptor =(PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pImportDescriptor+sizeof(IMAGE_IMPORT_DESCRIPTOR));
+			pFuncAddr++;
 		}
-		// #修改状态
-		g_dwOldAddr=0;
-		g_dwNewAddr=0;
-		g_dwIATHookFlag=0;
-		return bFlag;
+		pImportDescriptor =(PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pImportDescriptor+sizeof(IMAGE_IMPORT_DESCRIPTOR));
 	}
-	
-	int WINAPI MyMessageBox(HWND hWnd,LPCSTR lpText,LPCSTR lpCaption,UINT uType)
-	{
-		char lpNewText[]="修改后的内容";
-		// #定义MessageBox函数指针
-		typedef int (WINAPI *PFNMESSAGEBOX)(HWND,LPCSTR,LPCSTR,UINT);
-		// #执行真正的函数
-		int ret=((PFNMESSAGEBOX)g_dwOldAddr)(hWnd,lpNewText,lpCaption,uType);
-		return ret;
-	}
-	
-	DWORD WINAPI ThreadProc(LPVOID lParam)
-	{
-		// #保存原函数的地址
-		DWORD pOldFuncAddr=(DWORD)GetProcAddress(LoadLibrary("user32.dll"),"MessageBoxA");
-		// #安装或者卸载HOOK
-		if(!g_dwIATHookFlag)
-		{
-			SetIATHook(pOldFuncAddr,(DWORD)MyMessageBox);
-		}
-		else
-		{
-			UnIATHook();
-		}
-		return 0;
-	}
-	BOOL APIENTRY DllMain( HANDLE hModule, 
-						  DWORD  ul_reason_for_call, 
-						  LPVOID lpReserved
-						  )
-	{
-		
-		
-		switch (ul_reason_for_call)
-			
-		{
-		case DLL_PROCESS_ATTACH:
-			CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)ThreadProc,NULL,0,NULL);
-			break;
-		case DLL_THREAD_ATTACH:
-			break;
-		case DLL_THREAD_DETACH:
-			break;
-		case DLL_PROCESS_DETACH:
-			break;
-		}
-	    return TRUE;
-	}
+	// #修改状态
+	g_dwOldAddr=0;
+	g_dwNewAddr=0;
+	g_dwIATHookFlag=0;
+	return bFlag;
+}
 
+int WINAPI MyMessageBox(HWND hWnd,LPCSTR lpText,LPCSTR lpCaption,UINT uType)
+{
+	char lpNewText[]="修改后的内容";
+	// #定义MessageBox函数指针
+	typedef int (WINAPI *PFNMESSAGEBOX)(HWND,LPCSTR,LPCSTR,UINT);
+	// #执行真正的函数
+	int ret=((PFNMESSAGEBOX)g_dwOldAddr)(hWnd,lpNewText,lpCaption,uType);
+	return ret;
+}
+
+DWORD WINAPI ThreadProc(LPVOID lParam)
+{
+	// #保存原函数的地址
+	DWORD pOldFuncAddr=(DWORD)GetProcAddress(LoadLibrary("user32.dll"),"MessageBoxA");
+	// #安装或者卸载HOOK
+	if(!g_dwIATHookFlag)
+	{
+		SetIATHook(pOldFuncAddr,(DWORD)MyMessageBox);
+	}
+	else
+	{
+		UnIATHook();
+	}
+	return 0;
+}
+BOOL APIENTRY DllMain( HANDLE hModule, 
+					  DWORD  ul_reason_for_call, 
+					  LPVOID lpReserved
+					  )
+{
+	
+	
+	switch (ul_reason_for_call)
+		
+	{
+	case DLL_PROCESS_ATTACH:
+		CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)ThreadProc,NULL,0,NULL);
+		break;
+	case DLL_THREAD_ATTACH:
+		break;
+	case DLL_THREAD_DETACH:
+		break;
+	case DLL_PROCESS_DETACH:
+		break;
+	}
+    return TRUE;
+}
+```
 
 ## 0x03实验结果
 * 实验环境: win10

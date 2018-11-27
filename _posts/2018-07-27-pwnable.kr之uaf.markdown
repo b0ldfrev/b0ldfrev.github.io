@@ -19,86 +19,87 @@ tags:
 
 源代码 uaf.cpp
 
-	#include <fcntl.h>
-	#include <iostream>
-	#include <cstring>
-	#include <cstdlib>
-	#include <unistd.h>
-	using namespace std;
-	
-	class Human{
-	private:
-	        virtual void give_shell(){
-	                system("/bin/sh");
-	        }
-	protected:
-	        int age;
-	        string name;
-	public:
-	        virtual void introduce(){
-	                cout << "My name is " << name << endl;
-	                cout << "I am " << age << " years old" << endl;
-	        }
-	};
-	
-	class Man: public Human{
-	public:
-	        Man(string name, int age){
-	                this->name = name;
-	                this->age = age;
-	        }
-	        virtual void introduce(){
-	                Human::introduce();
-	                cout << "I am a nice guy!" << endl;
-	        }
-	};
-	
-	class Woman: public Human{
-	public:
-	        Woman(string name, int age){
-	                this->name = name;
-	                this->age = age;
-	        }
-	        virtual void introduce(){
-	                Human::introduce();
-	                cout << "I am a cute girl!" << endl;
-	        }
-	};
-	
-	int main(int argc, char* argv[]){
-	        Human* m = new Man("Jack", 25);
-	        Human* w = new Woman("Jill", 21);
-	
-	        size_t len;
-	        char* data;
-	        unsigned int op;
-	        while(1){
-	                cout << "1. use\n2. after\n3. free\n";
-	                cin >> op;
-	
-	                switch(op){
-	                        case 1:
-	                                m->introduce();
-	                                w->introduce();
-	                                break;
-	                        case 2:
-	                                len = atoi(argv[1]);
-	                                data = new char[len];
-	                                read(open(argv[2], O_RDONLY), data, len);
-	                                cout << "your data is allocated" << endl;
-	                                break;
-	                        case 3:
-	                                delete m;
-	                                delete w;
-	                                break;
-	                        default:
-	                                break;
-	                }
-	        }
-	
-	        return 0;
-	}
+```c++
+#include <fcntl.h>
+#include <iostream>
+#include <cstring>
+#include <cstdlib>
+#include <unistd.h>
+using namespace std;
 
+class Human{
+private:
+        virtual void give_shell(){
+                system("/bin/sh");
+        }
+protected:
+        int age;
+        string name;
+public:
+        virtual void introduce(){
+                cout << "My name is " << name << endl;
+                cout << "I am " << age << " years old" << endl;
+        }
+};
+
+class Man: public Human{
+public:
+        Man(string name, int age){
+                this->name = name;
+                this->age = age;
+        }
+        virtual void introduce(){
+                Human::introduce();
+                cout << "I am a nice guy!" << endl;
+        }
+};
+
+class Woman: public Human{
+public:
+        Woman(string name, int age){
+                this->name = name;
+                this->age = age;
+        }
+        virtual void introduce(){
+                Human::introduce();
+                cout << "I am a cute girl!" << endl;
+        }
+};
+
+int main(int argc, char* argv[]){
+        Human* m = new Man("Jack", 25);
+        Human* w = new Woman("Jill", 21);
+
+        size_t len;
+        char* data;
+        unsigned int op;
+        while(1){
+                cout << "1. use\n2. after\n3. free\n";
+                cin >> op;
+
+                switch(op){
+                        case 1:
+                                m->introduce();
+                                w->introduce();
+                                break;
+                        case 2:
+                                len = atoi(argv[1]);
+                                data = new char[len];
+                                read(open(argv[2], O_RDONLY), data, len);
+                                cout << "your data is allocated" << endl;
+                                break;
+                        case 3:
+                                delete m;
+                                delete w;
+                                break;
+                        default:
+                                break;
+                }
+        }
+
+        return 0;
+}
+```
 
 
 可以看到父类Human有虚函数give_shell和introduce，子类Man和Woman继承了父类并且重载了父类的introduce虚函数。有关虚函数虚表的概念，见我的这篇博文 [https://sirhc.xyz/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/](https://sirhc.xyz/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/) 
@@ -122,78 +123,84 @@ tags:
 
 我们先看看 **Human\* m = new Man("Jack", 25);** 的实现过程，汇编代码如下：
 
-	lea     rax, [rbp+var_12]
-	mov     rdi, rax
-	call    __ZNSaIcEC1Ev   ; std::allocator<char>::allocator(void)
-	lea     rdx, [rbp+var_12]
-	lea     rax, [rbp+var_50]
-	mov     esi, offset aJack ; "Jack"
-	mov     rdi, rax
-	;   try {
-	call    __ZNSsC1EPKcRKSaIcE ; std::string::string(char const*,std::allocator<char> const&)
-	;   }   #starts at 400EF2
-	lea     r12, [rbp+var_50]
-	mov     edi, 18h        ; unsigned __int64
-	;   try {
-	call    __Znwm          ;          operator new(ulong)
-	;   }   #starts at 400F00
-	mov     rbx, rax
-	mov     edx, 19h
-	mov     rsi, r12
-	mov     rdi, rbx
-	;   try {
-	call    _ZN3ManC2ESsi   ;          Man::Man(std::string,int)
-	;   }   #starts at 400F13
-	mov     [rbp+var_38], rbx
-	lea     rax, [rbp+var_50]
-	mov     rdi, rax        ; this
-	;   try {
-	call    __ZNSsD1Ev      ; std::string::~string()
-	;   }   #starts at 400F23
-	lea     rax, [rbp+var_12]
-	mov     rdi, rax
-	call    __ZNSaIcED1Ev   ; std::allocator<char>::~allocator()
-	lea     rax, [rbp+var_11]
-	mov     rdi, rax
-
+```nasm
+lea     rax, [rbp+var_12]
+mov     rdi, rax
+call    __ZNSaIcEC1Ev   ; std::allocator<char>::allocator(void)
+lea     rdx, [rbp+var_12]
+lea     rax, [rbp+var_50]
+mov     esi, offset aJack ; "Jack"
+mov     rdi, rax
+;   try {
+call    __ZNSsC1EPKcRKSaIcE ; std::string::string(char const*,std::allocator<char> const&)
+;   }   #starts at 400EF2
+lea     r12, [rbp+var_50]
+mov     edi, 18h        ; unsigned __int64
+;   try {
+call    __Znwm          ;          operator new(ulong)
+;   }   #starts at 400F00
+mov     rbx, rax
+mov     edx, 19h
+mov     rsi, r12
+mov     rdi, rbx
+;   try {
+call    _ZN3ManC2ESsi   ;          Man::Man(std::string,int)
+;   }   #starts at 400F13
+mov     [rbp+var_38], rbx
+lea     rax, [rbp+var_50]
+mov     rdi, rax        ; this
+;   try {
+call    __ZNSsD1Ev      ; std::string::~string()
+;   }   #starts at 400F23
+lea     rax, [rbp+var_12]
+mov     rdi, rax
+call    __ZNSaIcED1Ev   ; std::allocator<char>::~allocator()
+lea     rax, [rbp+var_11]
+mov     rdi, rax
+```
 
 
 在 **call Znwm ;    #operator new(ulong)** 分配好了堆内存，从**mov edi, 18h** 看出 分配的大小为0x18字节
 
 在 **call  ZN3ManC2ESsi  ;   #Man::Man(std::string,int)** 调用构造函数，执行完这一步之后我们去看看为m分配好的堆空间：
 
-	pwndbg> x/3xg $rax
-	0x12f9040:	0x0000000000401570	0x0000000000000019
-	0x12f9050:	0x00000000012f9028
+```nasm
+pwndbg> x/3xg $rax
+0x12f9040:	0x0000000000401570	0x0000000000000019
+0x12f9050:	0x00000000012f9028
+```
 
 **0x401570** 便是虚表的的地址，**0x19** 是构造函数传入的age = 25 ，**0x12f9028** 是构造函数传入的name的地址，我们去看看：
 
-	pwndbg> x/1s 0x12f9028
-	0x12f9028:	"Jack"
+```nasm
+pwndbg> x/1s 0x12f9028
+0x12f9028:	"Jack"
+```
 
 我们重点看看vtable虚表的地址**0x401570** 
 
-	pwndbg> x/3xg 0x401570
-	0x401570 <_ZTV3Man+16>:	0x000000000040117a	0x00000000004012d2
-	0x401580 <_ZTV5Human>:	0x0000000000000000
-
+```nasm
+pwndbg> x/3xg 0x401570
+0x401570 <_ZTV3Man+16>:	0x000000000040117a	0x00000000004012d2
+0x401580 <_ZTV5Human>:	0x0000000000000000
+```
 这里面有两个函数指针，一个指向 **give_shell** 另一个指向重载后的**introduce**  函数。
 
+```nasm
+pwndbg> x/5i 0x40117a
+   0x40117a <_ZN5Human10give_shellEv>:	    push   rbp
+   0x40117b <_ZN5Human10give_shellEv+1>:	mov    rbp,rsp
+   0x40117e <_ZN5Human10give_shellEv+4>:	sub    rsp,0x10
+   0x401182 <_ZN5Human10give_shellEv+8>:	mov    QWORD PTR [rbp-0x8],rdi
+   0x401186 <_ZN5Human10give_shellEv+12>:	mov    edi,0x4014a8
 
-	pwndbg> x/5i 0x40117a
-	   0x40117a <_ZN5Human10give_shellEv>:	    push   rbp
-	   0x40117b <_ZN5Human10give_shellEv+1>:	mov    rbp,rsp
-	   0x40117e <_ZN5Human10give_shellEv+4>:	sub    rsp,0x10
-	   0x401182 <_ZN5Human10give_shellEv+8>:	mov    QWORD PTR [rbp-0x8],rdi
-	   0x401186 <_ZN5Human10give_shellEv+12>:	mov    edi,0x4014a8
-	
-	pwndbg> x/5i 0x4012d2
-	   0x4012d2 <_ZN3Man9introduceEv>:	    push   rbp
-	   0x4012d3 <_ZN3Man9introduceEv+1>:	mov    rbp,rsp
-	   0x4012d6 <_ZN3Man9introduceEv+4>:	sub    rsp,0x10
-	   0x4012da <_ZN3Man9introduceEv+8>:	mov    QWORD PTR [rbp-0x8],rdi
-	   0x4012de <_ZN3Man9introduceEv+12>:	mov    rax,QWORD PTR [rbp-0x8]
-
+pwndbg> x/5i 0x4012d2
+   0x4012d2 <_ZN3Man9introduceEv>:	    push   rbp
+   0x4012d3 <_ZN3Man9introduceEv+1>:	mov    rbp,rsp
+   0x4012d6 <_ZN3Man9introduceEv+4>:	sub    rsp,0x10
+   0x4012da <_ZN3Man9introduceEv+8>:	mov    QWORD PTR [rbp-0x8],rdi
+   0x4012de <_ZN3Man9introduceEv+12>:	mov    rax,QWORD PTR [rbp-0x8]
+```
 
 **Human\* w = new Woman("Jill", 21)** 的过程同理
 
