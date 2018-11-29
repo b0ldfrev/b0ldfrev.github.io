@@ -11,7 +11,7 @@ tags:
  
 ---
 
->**PS :**该程序 示范unlink的 **向后合并** 操作，如要实现 **相前合并** 操作，有点复杂，得构造chunk错位，详见我之后的文章。
+>**PS :**该程序 示范unlink的 **向后合并** 操作，如要实现 **相前合并** 操作，得构造chunk错位，详见我之后的文章。
 
 ## 0x00 代码分析
 
@@ -267,6 +267,14 @@ set_foot(p, size);  #将后一个chunk的prev_size设置为当前chunk的size
 >size大小检测
 
 ```c
+      #判断nextsize的大小是否是一个正常的值，如果我们fake glibc时将size改成了很大的数，期望达到相应的效果,在nextsize的检测中就会出错
+     if (__builtin_expect (nextchunk->size <= 2 * SIZE_SZ, 0)
+    || __builtin_expect (nextsize >= av->system_mem, 0))
+      {//如果nextsize小于最小的chunk大小，或者大于了整个分配区的内存总量，报错
+errstr = "free(): invalid next size (normal)";
+goto errout;
+      }
+
   #由于P已经在双向链表中，所以有两个地方记录其大小，所以检查一下其大小是否一致。
 if (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), 0))      \
       malloc_printerr ("corrupted size vs. prev_size"); 
@@ -281,12 +289,25 @@ if (__builtin_expect (FD->bk != P || BK->fd != P, 0))                      \
 >Double Free检测
 
 ```c
-/* Or whether the block is actually not marked used. */
-    if (__glibc_unlikely (!prev_inuse(nextchunk)))
-      {
-            errstr = "double free or corruption (!prev)";
-            goto errout;
-      }
+/* Lightweight tests: check whether the block is already the top block*/
+//判断当前free的chunk是否是top chunk，因为top chunk本身就是一个空闲的chunk，如果是top chunk,造成 double free
+if (__glibc_unlikely (p == av->top)){
+    errstr = "double free or corruption (top)";
+    goto errout;
+}
+/* Or whether the next chunk is beyond the boundaries of the arena.  */
+if (__builtin_expect (contiguous (av)//不是通过mmap分配的，是通过sbrk()分配的
+    && (char *) nextchunk   //下一个chunk的地址如果已经超过了top chunk的结束地址，报错
+    >= ((char *) av->top + chunksize(av->top)), 0)){
+    errstr = "double free or corruption (out)";
+    goto errout;
+ }
+/* Or whether the block is actually not marked used.  */
+if (__glibc_unlikely (!prev_inuse(nextchunk))){//如果下一个chunk没有标示将要释放的这个chunk 的p位为0，说明chunk 可能被double free
+    errstr = "double free or corruption (!prev)";
+    goto errout;
+}
+
 ```
 
 ## 0x03 漏洞利用
@@ -322,6 +343,7 @@ if (__builtin_expect (FD->bk != P || BK->fd != P, 0))                      \
 	|           |         |    |    |    |    | A  |      |      |    |    |      |
 	|           |         |    |    |    |    |    |      |      |    |    |      |
 	+-----------+---------+----+----+----+----+----+------+------+----+----+------+
+
 我们在malloc返回的ptr0（chunk 0）开始地方构造的数据：
 
 
