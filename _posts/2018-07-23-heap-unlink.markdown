@@ -159,6 +159,53 @@ add函数，程序malloc分配的堆空间在内存中是连续的，但是在Se
 
 一旦涉及到free内存，那么就意味着有新的chunk由allocated状态变成了free状态，此时glibc malloc就需要进行合并操作——向前以及(或)向后合并。这里所谓向前向后的概念如下：将previous free chunk合并到当前free chunk，叫做向后合并；将后面的free chunk合并到当前free chunk，叫做向前合并。
 
+
+完整的unlink宏如下
+
+```c
+define unlink(AV, P, BK, FD) {                                            
+    FD = P->fd;                     
+    BK = P->bk;                 
+    if (__builtin_expect (FD->bk != P || BK->fd != P, 0))//malloc中新增加的防止double free的判断
+      malloc_printerr (check_action, "corrupted double-linked list", P, AV);  
+    else {                                    
+        FD->bk = BK;                    
+        BK->fd = FD;                    
+        if (!in_smallbin_range (P->size) && __builtin_expect (P->fd_nextsize != NULL, 0)) {
+        if (__builtin_expect (P->fd_nextsize->bk_nextsize != P, 0)
+        || __builtin_expect (P->bk_nextsize->fd_nextsize != P, 0))    
+          malloc_printerr (check_action,"corrupted double-linked list (not small)",P, AV);
+            if (FD->fd_nextsize == NULL) {
+                if (P->fd_nextsize == P)    
+                  FD->fd_nextsize = FD->bk_nextsize = FD;
+                else {                      
+                    FD->fd_nextsize = P->fd_nextsize;
+                    FD->bk_nextsize = P->bk_nextsize;
+                    P->fd_nextsize->bk_nextsize = FD;
+                    P->bk_nextsize->fd_nextsize = FD;
+                  }                           
+              } else {                      
+                P->fd_nextsize->bk_nextsize = P->bk_nextsize;
+                P->bk_nextsize->fd_nextsize = P->fd_nextsize;
+              }                                  
+          }                                   
+      }                         
+}
+
+```
+
+最简单版本unlink宏如下
+
+```c
+/* Take a chunk off a bin list */
+define unlink(P, BK, FD) {                                           
+  FD = P->fd;                                                          
+  BK = P->bk;                                                          
+  FD->bk = BK;                                                         
+  BK->fd = FD;                                                         
+}
+```
+
 一、向后合并：
 
 相关代码如下：
@@ -175,18 +222,6 @@ size += prevsize;
       unlink(p, bck, fwd);
 }   
 
-  #相关函数说明：
-/* Treat space at ptr + offset as a chunk */
-#define chunk_at_offset(p, s)  ((mchunkptr) (((char *) (p)) + (s))) 
-
-/*unlink操作的实质就是：将P所指向的chunk从双向链表中移除，这里BK与FD用作临时变量*/
-#define unlink(P, BK, FD) {                                            \
-    FD = P->fd;                                   \
-    BK = P->bk;                                   \
-    FD->bk = BK;                                  \
-    BK->fd = FD;                                  \
-    ...
-}
 ```
 
 首先检测前一个chunk是否为free，这可以通过检测当前free chunk的PREV_INUSE(P)比特位知晓。在本例中，当前chunk（first chunk）的前一个chunk是allocated的，因为在默认情况下，堆内存中的第一个chunk总是被设置为allocated的，即使它根本就不存在。
