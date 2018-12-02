@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "heap-unlink"
-subtitle:   "unlink 原理与利用"
+title:      "Unlnk 原理与利用"
+subtitle:   "用一道Pwn题说起"
 date:       2018-07-23 12:00:00
 author:     "Chris"
 catalog: true
@@ -154,6 +154,7 @@ ssize_t sub_804876C()
 
 add函数，程序malloc分配的堆空间在内存中是连续的，但是在Set函数设置堆空间内容时没有限制长度，导致溢出，这里我们使用unlink拿shell。
 
+<span id="unlink"></span>
 ## 0x02 unlink介绍
 
 一旦涉及到free内存，那么就意味着有新的chunk由allocated状态变成了free状态，此时glibc malloc就需要进行合并操作——向前以及(或)向后合并。这里所谓向前向后的概念如下：将previous free chunk合并到当前free chunk，叫做向后合并；将后面的free chunk合并到当前free chunk，叫做向前合并。
