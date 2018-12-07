@@ -236,8 +236,40 @@ struct _IO_FILE_plus
 }
 ```
 
-在libc2.23版本下，32位的vtable偏移为0x94，64位偏移为0x228
+在libc2.23版本下，64位IO_FILE结构体中的偏移
 
+```c
+0x0   _flags
+0x8   _IO_read_ptr
+0x10  _IO_read_end
+0x18  _IO_read_base
+0x20  _IO_write_base
+0x28  _IO_write_ptr
+0x30  _IO_write_end
+0x38  _IO_buf_base
+0x40  _IO_buf_end
+0x48  _IO_save_base
+0x50  _IO_backup_base
+0x58  _IO_save_end
+0x60  _markers
+0x68  _chain
+0x70  _fileno
+0x74  _flags2
+0x78  _old_offset
+0x80  _cur_column
+0x82  _vtable_offset
+0x83  _shortbuf
+0x88  _lock
+0x90  _offset
+0x98  _codecvt
+0xa0  _wide_data
+0xa8  _freeres_list
+0xb0  _freeres_buf
+0xb8  __pad5
+0xc0  _mode
+0xc4  _unused2
+0xd8  vtable
+```
 vtable是IO_jump_t类型的指针，IO_jump_t中保存了一些函数指针，在后面我们会看到在一系列标准IO函数中会调用这些函数指针
 
 ```c
@@ -260,7 +292,7 @@ void * funcs[] = {
    15 NULL, // read
    16 NULL, // write
    17 NULL, // seek
-   18 pwn,  // close
+   18 NULL,  // close
    19 NULL, // stat
    20 NULL, // showmanyc
    21 NULL, // imbue
@@ -351,6 +383,8 @@ LABEL_7:
 ```c
 flag&8 = 0 and flag &2 =0 and flag & 0x8000 != 0
 ```
+
+在最开始验证的地方`(_IO_FILE*)stdin+192`处要填为 0 或 -1（0xff）
 
 ## 0x04 漏洞利用
 
