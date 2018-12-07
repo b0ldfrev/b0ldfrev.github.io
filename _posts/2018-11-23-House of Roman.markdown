@@ -1,7 +1,7 @@
 ---
 layout:     post
 title:      "House of Roman"
-subtitle:   "无leak函数的堆利用"
+subtitle:   "PIE无leak函数的堆利用"
 date:       2018-11-23 12:00:00
 author:     "Chris"
 catalog: true
@@ -11,7 +11,7 @@ tags:
  
 ---
 
-House of Roman 实现了没有leak地址功能的程序的利用，这个技巧说简单点其实就是 fastbin attack 和 Unsortbin attachk 结合，还有严密的堆布局，我学习了一下，做个简单的分享与记录。
+House of Roman 实现了开启PIE没有leak地址功能的程序的利用，这个技巧说简单点其实就是 fastbin attack 和 Unsortbin attachk 结合，还有严密的堆布局，我学习了一下，做个简单的分享与记录。
 
 ## aslr
 
