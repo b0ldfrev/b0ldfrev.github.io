@@ -146,134 +146,7 @@ int sub_4008E3()
 <span id="IO_FILE"></span>
 ## 0X02 IO_FILE 介绍
 
->转自 [ ctf-wiki ]()
-
-FILE结构定义在libio.h中，如下所示
-
-```c
-struct _IO_FILE {
-  int _flags;       /* High-order word is _IO_MAGIC; rest is flags. */
-#define _IO_file_flags _flags
-
-  /* The following pointers correspond to the C++ streambuf protocol. */
-  /* Note:  Tk uses the _IO_read_ptr and _IO_read_end fields directly. */
-  char* _IO_read_ptr;   /* Current read pointer */
-  char* _IO_read_end;   /* End of get area. */
-  char* _IO_read_base;  /* Start of putback+get area. */
-  char* _IO_write_base; /* Start of put area. */
-  char* _IO_write_ptr;  /* Current put pointer. */
-  char* _IO_write_end;  /* End of put area. */
-  char* _IO_buf_base;   /* Start of reserve area. */
-  char* _IO_buf_end;    /* End of reserve area. */
-  /* The following fields are used to support backing up and undo. */
-  char *_IO_save_base; /* Pointer to start of non-current get area. */
-  char *_IO_backup_base;  /* Pointer to first valid character of backup area */
-  char *_IO_save_end; /* Pointer to end of non-current get area. */
-
-  struct _IO_marker *_markers;
-
-  struct _IO_FILE *_chain;
-
-  int _fileno;
-#if 0
-  int _blksize;
-#else
-  int _flags2;
-#endif
-  _IO_off_t _old_offset; /* This used to be _offset but it's too small.  */
-
-#define __HAVE_COLUMN /* temporary */
-  /* 1+column number of pbase(); 0 is unknown. */
-  unsigned short _cur_column;
-  signed char _vtable_offset;
-  char _shortbuf[1];
-
-  /*  char* _save_gptr;  char* _save_egptr; */
-
-  _IO_lock_t *_lock;
-#ifdef _IO_USE_OLD_IO_FILE
-#endif
-#if defined _G_IO_IO_FILE_VERSION && _G_IO_IO_FILE_VERSION == 0x20001
-  _IO_off64_t _offset;
-# if defined _LIBC || defined _GLIBCPP_USE_WCHAR_T
-  /* Wide character stream stuff.  */
-  struct _IO_codecvt *_codecvt;
-  struct _IO_wide_data *_wide_data;
-  struct _IO_FILE *_freeres_list;
-  void *_freeres_buf;
-# else
-  void *__pad1;
-  void *__pad2;
-  void *__pad3;
-  void *__pad4;
-# endif
-  size_t __pad5;
-  int _mode;
-  /* Make sure we don't get into trouble again.  */
-  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];
-#endif
-
-};
-```
-
-进程中的FILE结构会通过`_chain`域彼此连接形成一个链表，链表头部用全局变量`_IO_list_all`表示，通过这个值我们可以遍历所有的FILE结构。
-
-在标准I/O库中，每个程序启动时有三个文件流是自动打开的：stdin、stdout、stderr。因此在初始状态下，`_IO_list_all`指向了一个有这些文件流构成的链表，但是需要注意的是这三个文件流位于libc.so的数据段。而我们使用fopen创建的文件流是分配在堆内存上的。
-
-我们可以在libc.so中找到stdin\stdout\stderr等符号，这些符号是指向FILE结构的指针，真正结构的符号是
-
-	_IO_2_1_stderr_
-	_IO_2_1_stdout_
-	_IO_2_1_stdin_
-
-但是事实上_IO_FILE结构外包裹着另一种结构_IO_FILE_plus，其中包含了一个重要的指针vtable指向了一系列函数指针。
-
-```c
-struct _IO_FILE_plus
-{
-    _IO_FILE    file;
-    IO_jump_t   *vtable;
-}
-```
-
-64位IO_FILE_plus结构体中的偏移
-
-```c
-0x0   _flags
-0x8   _IO_read_ptr
-0x10  _IO_read_end
-0x18  _IO_read_base
-0x20  _IO_write_base
-0x28  _IO_write_ptr
-0x30  _IO_write_end
-0x38  _IO_buf_base
-0x40  _IO_buf_end
-0x48  _IO_save_base
-0x50  _IO_backup_base
-0x58  _IO_save_end
-0x60  _markers
-0x68  _chain
-0x70  _fileno
-0x74  _flags2
-0x78  _old_offset
-0x80  _cur_column
-0x82  _vtable_offset
-0x83  _shortbuf
-0x88  _lock
-0x90  _offset
-0x98  _codecvt
-0xa0  _wide_data
-0xa8  _freeres_list
-0xb0  _freeres_buf
-0xb8  __pad5
-0xc0  _mode
-0xc4  _unused2
-0xd8  vtable
-```
-vtable是IO_jump_t类型的指针，IO_jump_t中保存了一些函数指针，在后面我们会看到在一系列标准IO函数中会调用这些函数指针
-
-
-![pic6]
+[传送门](https://sirhc.xyz/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/)
 
 printf和puts是常用的输出函数，在printf的参数是以'\n'结束的纯字符串时，printf会被优化为puts函数并去除换行符。
 
@@ -286,11 +159,11 @@ printf的调用同样是通过_IO_xsputn实现
 print函数里面会调用vprint，贴上ida的源码
 
 ```c
-__int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
+__int64 __fastcall vfprintf(__int64 fp, const char *a2, __int64 *a3){
 
-  a1=(_IO_FILE*)stdin
+  // fp=(_IO_FILE*)stdin
 
-  v3 = *(_DWORD *)(a1 + 192);
+  v3 = fp->_mode;
   if ( v3 )
   {
     if ( v3 != -1 )
@@ -298,12 +171,12 @@ __int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
   }
   else
   {
-    *(_DWORD *)(a1 + 192) = -1;
+    fp->_mode = -1;
   }
-  v4 = *(_DWORD *)a1;
-  if ( *(_DWORD *)a1 & 8 )
+  v4 = fp->_flags;
+  if ( fp->_flags & 8 )
   {
-    *(_DWORD *)a1 = v4 | 0x20;
+    LODWORD(fp->_flags) = v4 | 0x20;
     errno = 9;
     return 0xFFFFFFFFLL;
   }
@@ -314,11 +187,11 @@ __int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
   }
   v5 = a3;
   v6 = a2;
-  v7 = a1;
+  v7 = fp;
   if ( v4 & 2 )
-    return sub_4FE60(a1, a2, a3);
+    return sub_4FE60();
   v8 = *a3;
-  LODWORD(v223) = *(_DWORD *)a1;
+  LODWORD(v223) = fp->_flags;
   v9 = 0;
   v235 = v8;
   v236 = a3[1];
@@ -330,11 +203,11 @@ __int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
     v9 = dword_3C9730;
     if ( dword_3C9730 )
     {
-      ((void (__fastcall *)(__int64 (__fastcall **)(), __int64 (__fastcall *)(), __int64))(__readfsqword(0x30u) ^ __ROR8__(qword_3C96F0, 17)))(
+      ((void (__fastcall *)(__int64 (__fastcall **)(), __int64 (__fastcall *)(), _IO_FILE *))(__readfsqword(0x30u) ^ __ROR8__(qword_3C96F0, 17)))(
         &v238,
         funlockfile,
-        a1);
-      if ( *(_DWORD *)a1 & 0x8000 )
+        fp);
+      if ( fp->_flags & 0x8000 )
         goto LABEL_7;
     }
 ```
@@ -345,10 +218,10 @@ __int64 __fastcall vfprintf(__int64 a1, const char *a2, __int64 *a3){
 
 ```c
 LABEL_7:
-  v11 = *(_QWORD *)(a1 + 216); //取IO_jump_t   *vtable
+  v11 = *(_QWORD *)(fp->vtable); //取IO_jump_t   *vtable
   v12 = (__int64)v6;
   v223 = v10 - (_QWORD)v6;
-  v13 = (*(__int64 (__fastcall **)(__int64, const char *, __int64))(v11 + 56))(a1, v6, 
+  v13 = (*(__int64 (__fastcall **)(__int64, const char *, __int64))(v11 + 56))(fp, v6, 
   /* v11 + 56是取vtable虚表里面的函数指针_IO_sputn 并调用 */
   v10 - (_QWORD)v6);
 ```
@@ -361,7 +234,7 @@ LABEL_7:
 flag&8 = 0 and flag &2 =0 and flag & 0x8000 != 0
 ```
 
-在最开始验证的地方`(_IO_FILE*)stdin+192`处要填为 0 或 -1（0xff）
+在最开始验证的地方`(_IO_FILE*)fp->_mode`处要填为 0 或 -1（0xff）
 
 ## 0x04 漏洞利用
 
@@ -399,13 +272,6 @@ new(4,payload)
 
 ![pic5]
 
-伪造的`IO_FILE_plu`s结构体中的flags要满足下面的条件
-
-```c
-flag&8 = 0 and flag &2 =0 and flag & 0x8000 != 0
-```
-
-所以flag的值可以为0xfbad8000 或者0xfbad8080,其他的根据原本的结构体伪造就行了.
 
 伪造的vtable在 7*8 偏移处 xsputn 填上后门函数地址，这样执行printf时，调用`_IO_xsputn`查虚表时，就拿下shell。
 

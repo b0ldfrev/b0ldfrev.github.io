@@ -367,11 +367,11 @@ __int64 __fastcall IO_str_overflow(_IO_FILE *fp, unsigned int a2)
 
 来看看要绕过的地方
 
-`fp->_flags & 8` 得为0，`(fp->_flags & 0xC00) == 0x400` 得为0 , `fp->_flags & 1` 得为0, 设置`fp->_IO_write_ptr - fp->_IO_write_base > fp->_IO_buf_end - fp->_IO_buf_base`
+`fp->_flags & 8` 得为0，`(fp->_flags & 0xC00) == 0x400` 得为0 , `fp->_flags & 1` 得为0, 所以我这里就将`fp->_flags`设置为0 ； 并设置`fp->_IO_write_ptr - fp->_IO_write_base > fp->_IO_buf_end - fp->_IO_buf_base`
 
 这样我们才能够绕过检查，来到函数调用`(fp + 0xE0)(2 * v6 + 100)`也就是 `(fp + 0xE0)(2 * (fp->_IO_buf_end - fp->_IO_buf_base) + 100)`
 
-我们可以将 `fp + 0x E0`设置成 `system`函数地址 ,`fp->_IO_buf_base`设置成0，`fp->_IO_buf_end`设置成 `(binsh_addr-100)/2`这样就设置了system参数，`fp->_IO_write_ptr`设置成一个很大的数
+我们可以将 `fp + 0x E0`设置成 `system`函数地址 ,`fp->_IO_buf_base`设置成0，`fp->_IO_buf_end`设置成 `(binsh_addr-100)/2`这样就设置了system参数，`fp->_IO_write_ptr`设置成一个很大的正值
 
 这里有个坑，就是`(binsh_addr-100)/2`, 当`/bin/sh`地址存在于libc中，它/2再*2 若是除不尽有余数的话 会影响最后的参数地址，我们为了避免这种情况我们尽量在堆内存中填入`"/bin/sh\x00"`, 因为堆内存往往都是2的倍数对齐。
 
