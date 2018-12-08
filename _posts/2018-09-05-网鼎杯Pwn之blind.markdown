@@ -236,7 +236,7 @@ struct _IO_FILE_plus
 }
 ```
 
-在libc2.23版本下，64位IO_FILE结构体中的偏移
+64位IO_FILE_plus结构体中的偏移
 
 ```c
 0x0   _flags
