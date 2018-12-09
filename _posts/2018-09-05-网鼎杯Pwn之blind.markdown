@@ -113,6 +113,8 @@ unsigned __int64 __fastcall sub_400932(__int64 a1, unsigned int a2)
 
 ## 0x01 漏洞分析
 
+add函数申请的都是fastbin chunk ，程序无法泄露libc基地址，只能在堆块中寻找利用方法。
+
 ![pic4]
 
 由于在mian函数的`sub_400882`调用了setvbuf,设置了stdin,stdout,stderr缓冲模式
@@ -349,7 +351,7 @@ p.interactive()
 
 ## 0x06 总结
 
-这个程序巧妙之处在于，刚好申请的0x68内存，能配合bss段指向libc的FILE指针的0x7f开头地址，造成fastbin_attack，实现任意地址写。能够控制ptr指针，伪造`IO_FILE`结构就不在话下。
+这个程序巧妙之处在于，刚好申请的0x68的fastbin内存，能利用bss段指向libc的FILE指针的0x7f开头地址，造成fastbin_attack，实现任意地址写。能够控制ptr指针，在bss段伪造`IO_FILE`结构就不在话下。
 
 
 

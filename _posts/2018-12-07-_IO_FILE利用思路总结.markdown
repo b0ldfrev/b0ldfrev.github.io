@@ -175,6 +175,7 @@ $7 = {
 * fclose 最终会调用`_IO_FILE_FINISH`
 * fwrite 最终会调用`_IO_file_xsputn`
 * fread 最终会调用`_IO_fiel_xsgetn `
+* scanf/gets 最终会调用`_IO_file_xsgetn`
 
 ## libc_2.24以下的利用
 
@@ -184,16 +185,17 @@ $7 = {
 
 伪造 vtable 劫持程序流程的中心思想就是针对_IO_FILE_plus 的 vtable 动手脚，通过把 vtable 指向我们控制的内存，并在其中布置函数指针来实现。
 
-**所以**,最常见的利用方法就是修改`_IO_2_1_stdin_`结构，因为printf时会用到该结构，且最终会调用到该结构vtable里面的`_IO_file_xsputn`函数指针。**so怎么定位`_IO_2_1_stdin_`结构？`_IO_file_xsputn`函数指针改成啥？**
+**所以**,最常见的利用方法就是修改`_IO_2_1_stdout_`结构，因为printf时会用到该结构，且最终会调用到该结构vtable里面的`_IO_file_xsputn`函数指针。
+
+**so怎么定位`_IO_2_1_stdout_`结构？`_IO_file_xsputn`函数指针改成啥？**
 
 如果程序有调用`setbuf`或者`setvbuf`函数来设置stdin,stdout,stderr输入流等，那么程序的bss段上就会存在它的指针（但未初始化）如：
 
 ![pic1]
 
-但通常情况下，可以泄露libc地址的情况下，我们能够在libc文件中找到直接找到`_IO_2_1_stdin_`
+但通常情况下，可以泄露libc地址的情况下，我们能够在libc文件中找到直接找到`_IO_2_1_stdout_`
 
-改函数指针我们可以填充为one_gadget,这样就不用考虑参数问题；若`one_gadget`的环境变量都不好使，可以考虑填充为system函数地址，传参的话，**多数vtable函数指针在被调用时，会将它的`_IO_FILE_plus`地址当作第一个参数传递**，所以我们可以将`_IO_FILE_plus`的`_flags`成员填成`“/bin/sh\x00”`,但这种方法通常也不好用，因为**调用
-vtable函数指针之前会对`_IO_FILE_plus`的结构进行检查**，通常改“/bin/sh\x00”之后会导致对`_flags`成员的检查不通过（亲测printf不行，但House of orange利用中出现的`_IO_flush_all_lockp`能检查通过）
+改函数指针我们可以填充为one_gadget,这样就不用考虑参数问题；若`one_gadget`的环境变量都不好使，可以考虑填充为system函数地址，传参的话，**多数vtable函数指针在被调用时，会将它的`_IO_FILE_plus`地址当作第一个参数传递**，所以我们可以将`_IO_FILE_plus`的`_flags`成员填成`“/bin/sh\x00”`,但这种方法通常也不好用，因为**调用vtable函数指针之前会对`_IO_FILE_plus`的结构进行检查**，通常改“/bin/sh\x00”之后会导致对`_flags`成员的检查不通过（亲测printf不行，但House of orange利用中出现的`_IO_flush_all_lockp`能检查通过）
 
 ## libc_2.24及以上的利用
 
@@ -218,7 +220,7 @@ IO_validate_vtable (const struct _IO_jump_t *vtable)
 
 vtable必须要满足 在 `__stop___IO_vtables` 和 `__start___libc_IO_vtables` 之间，而我们伪造的vtable通常不满足这个条件。
 
-但是我们找到一条出路，那就是`_IO_str_jumps` 与`__IO_wstr_jumps `就位于 `__stop___libc_IO_vtables` 和 `__start___libc_IO_vtables` 之间, 所以我们是可以利用他们来通过 `IO_validate_vtable` 的检测的。
+但是我们找到一条出路，那就是`_IO_str_jumps` 与`__IO_wstr_jumps `就位于 `__stop___libc_IO_vtables` 和 `__start___libc_IO_vtables` 之间, 所以我们是可以利用他们来通过 `IO_validate_vtable` 的检测的,只需要将`vtable`填成`_IO_str_jumps` 或`__IO_wstr_jumps `就行。
 
 ```python
 pwndbg> p __start___libc_IO_vtables
@@ -231,7 +233,7 @@ pwndbg> p &_IO_wstr_jumps
 (const struct _IO_jump_t *) 0x7fcbc6703cc0 <_IO_wstr_jumps>
 ```
 
-其中，利用 `__IO_str_jumps` 绕过更简单，`__IO_str_jumps` 结构如下：
+其中，利用 `__IO_str_jumps` 绕过更简单，`__IO_str_jumps` 结构如下， 和vtable结构类似，`__IO_str_jumps`里面都是相似名字的函数指针，但功能不一样，且代码存在可利用漏洞
 
 ```c
 const struct _IO_jump_t _IO_str_jumps libio_vtable =
@@ -312,7 +314,10 @@ _IO_str_finish (FILE *fp, int dummy)
 	fp->_IO_buf_base为真
 	fp->_flags & 1 为假  // fp->_flags=0
 
-便可以`call qword ptr [fp+E8h]`,于是我们把`fp+E8`处填成`system_addr` ,还有 `fp->_IO_buf_base`填上`binsh_addr地址`。至于怎么call到这个虚表函数，可以利用vatble也就是`__IO_str_jumps`地址错位的方法。
+便可以`call qword ptr [fp+E8h]`,于是我们把`fp+E8`处填成`system_addr` ,还有 `fp->_IO_buf_base`填上`binsh_addr地址`。至于怎么call到这个虚表函数，可以利用vtable也就是`__IO_str_jumps`地址错位的方法，详细见下面解说。
+
+`_IO_str_finsh`在libc2.24及以上最常使用的场景之一是 伪造printf的`_IO_FILE` ，printf里面的`vfprintf`函数对`_IO_FILE`的check比较严格，但`_IO_str_finsh`对`_IO_FILE`的check和`vfprintf`几乎是相似的，不冲突。  printf最后调用到的是`vtable+0x38`处的`_IO_xsputn`,但`_IO_str_finish`的偏移为`0x10`，我们可以将虚表地址填成`_IO_str_jumps - 0x28`,这样就能调用到`_IO_str_finish`
+
 
 #### 利用_IO_str_overflow
 
