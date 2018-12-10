@@ -113,13 +113,17 @@ unsigned __int64 freenote()
 ## 漏洞利用
 
 程序没有edit函数，只能通过double free对已释放的堆块进行编辑.
+
 可利用fastbin 链泄露堆地址，然后在申请的堆内存中伪造一个堆块，用于后面泄露libc地址.
+
 通过double free申请到这个伪造的堆块，并编辑伪造堆块内容覆盖到下一个堆块的size头，改成非fastbin size.
 
 ![pic1]
 
 释放掉这个非fastbin chunk，泄露libc等一系列地址.
+
 再次使用double free 控制malloc_hook上方内容，并将malloc_hook改成one_gadget.
+
 get shell 
 
 ## EXP
