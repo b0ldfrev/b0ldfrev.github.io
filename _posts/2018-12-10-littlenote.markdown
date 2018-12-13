@@ -14,6 +14,20 @@ tags:
 
 下面看程序ida代码
 
+## checksec
+
+```shell
+chris@ubuntu:~/Pwn$ checksec littlenote
+[*] '/home/chris/Pwn/littlenote'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+
+```
+
+
 ## 程序功能
 
 ```python

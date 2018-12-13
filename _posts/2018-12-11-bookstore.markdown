@@ -10,6 +10,20 @@ tags:
  
 ---
 
+## checksec
+
+```shell
+chris@ubuntu:~$ checksec myhouse
+[*] '/home/chris/myhouse'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+
+```
+
+
 ## 程序功能
 
 ```python
