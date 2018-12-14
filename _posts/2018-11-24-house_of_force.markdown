@@ -58,7 +58,7 @@ void *__libc_malloc(size_t bytes)
 
 如果想要用户输入的大小经过内部的 checked_request2size可以得到这样的大小，即
 
-```c
+```python
 
 #define REQUEST_OUT_OF_RANGE(req)                                              \
     ((unsigned long) (req) >= (unsigned long) (INTERNAL_SIZE_T)(-2 * MINSIZE))
@@ -83,4 +83,4 @@ void *__libc_malloc(size_t bytes)
 
 一方面，我们需要绕过 REQUEST_OUT_OF_RANGE(req) 这个检测，即我们传给 malloc 的值在负数范围内，不得大于 -2 * MINSIZE，这个一般情况下都是可以满足的。
 
-另一方面，在满足对应的约束后，我们需要使得 request2size正好转换为对应的大小，也就是说，我们需要使得 ((req) + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK 恰好为 - 4112。首先，很显然，-4112 是 chunk 对齐的，那么我们只需要将其分别减去 SIZE_SZ，MALLOC_ALIGN_MASK 就可以得到对应的需要申请的值。其实我们这里只需要减 SIZE_SZ 就可以了，因为多减的 MALLOC_ALIGN_MASK 最后还会被对齐掉。而如果 -4112 不是 MALLOC_ALIGN 的时候，我们就需要多减一些了。当然，我们最好使得分配之后得到的 chunk 也是对齐的，因为在释放一个 chunk 的时候，会进行对齐检查。
+另一方面，在满足对应的约束后，我们需要使得 request2size正好转换为对应的大小，也就是说，我们需要使得 `((req) + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK `恰好为 - 4112。首先，很显然，-4112 是 chunk 对齐的，那么我们只需要将其分别减去 SIZE_SZ，MALLOC_ALIGN_MASK 就可以得到对应的需要申请的值。其实我们这里只需要减 SIZE_SZ 就可以了，因为多减的` MALLOC_ALIGN_MASK` 最后还会被对齐掉。而如果 -4112 不是` MALLOC_ALIGN` 的时候，我们就需要多减一些了。当然，我们最好使得分配之后得到的 chunk 也是对齐的，因为在释放一个 chunk 的时候，会进行对齐检查。
