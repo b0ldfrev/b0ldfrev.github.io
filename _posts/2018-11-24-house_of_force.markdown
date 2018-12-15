@@ -31,11 +31,12 @@ if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
     remainder      = chunk_at_offset(victim, nb); 
     // #define chunk_at_offset(p, s) ((mchunkptr)(((char *) (p)) + (s)))
     av->top        = remainder;  
-    //更新 main_arena 中 topchunk 地址 ，new_topchunk_addr=old_topchunk_addr+请求大小nb
+    //更新 main_arena 中 topchunk 地址 ，new_topchunk_addr=topchunk_addr+请求大小nb
     set_head(victim, nb | PREV_INUSE |
             (av != &main_arena ? NON_MAIN_ARENA : 0));
+    // 设置分配chunk的头
     set_head(remainder, remainder_size | PREV_INUSE);
-
+    // 设置topchunk的头
     check_malloced_chunk(av, victim, nb);
     void *p = chunk2mem(victim);
     alloc_perturb(p, bytes);
@@ -45,7 +46,7 @@ if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
 ```
 这里存在漏洞利用，比如如果此时我们已经将top_chunk的size改成了 -1 (进行比较时会把 size 转换成无符号数，因此 -1 也就是说 unsigned long 中最大的数0xffffffffffffffff) ,那我们就能从topchunk分配任意大小
 
-若我们的请求大小 nb 是精心构造的数值， 如 `nb = attack_addr - topchunk_addr` ,分配结束后，那新的top_chunk地址就会被替换成 `new_topchunk_addr = topchunk_addr+attack_addr - topchunk_addr = attck_addr`  ，更改 top chunk 的位置到我们想要的地方,之后我们分配的堆块就会出现在 attack_addr+0x10 的位置，便可以控制该内存的内容。
+若我们的请求大小 nb 是精心构造的数值， 如 `nb = attack_addr - topchunk_addr` ,分配结束后，根据代码，那新的top_chunk地址就会被替换成 `topchunk_addr+nb = topchunk_addr+attack_addr - topchunk_addr = attck_addr`  ，更改 top chunk 的位置到我们想要的地方,之后我们分配的堆块就会出现在 attack_addr+0x10 的位置，便可以控制该内存的内容。
 
 与此同时，我们需要注意的是，topchunk 的 size 也会更新，如果我们想要下次在指定位置分配大小为 x 的 chunk，我们需要确保 remainder_size 不小于 x+ MINSIZE。
 
