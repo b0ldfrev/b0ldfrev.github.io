@@ -87,12 +87,4 @@ service-worker: true
 
 
 # Friends
-friends: [
-    {
-    #     title: "Su",
-    #     href: "http://su.gallery/"
-    # },{
-        title: "cherry的博客",
-        href: "cherrygk.cn"
-    }
-]
+
