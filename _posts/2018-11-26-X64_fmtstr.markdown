@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      "X64 FmtStr"
-subtitle:   "记南邮NCTF一PWN题"
+title:      "南邮NCTF2018之smallbug2"
+subtitle:   "X64 FmtStr"
 date:       2018-11-26 12:00:00
 author:     "Chris"
 catalog: true
