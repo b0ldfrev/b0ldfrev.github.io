@@ -103,7 +103,7 @@ bck  =  victim->bk  =  p->bk  =  target_addr-16
 unsorted_chunks(av)->bk  =  bck  =  target_addr-16
 bck->fd  =  *(target_addr -16+16)  =  unsorted_chunks(av);
 ```
-可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，在插入 chunk 时，可能会出现问题。
+可以看出，在将 unsorted bin 的最后一个 chunk 拿出来的过程中，victim 的 fd 并没有发挥作用，所以即使我们修改了其为一个不合法的值也没有关系。然而，需要注意的是，unsorted bin 链表可能就此破坏，再次插入 chunk 时，可能会出现问题。
 
 
 ## 注意事项
