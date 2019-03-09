@@ -11,19 +11,19 @@ tags:
 
 ---
 
-#1.指令编码(硬编码)的结构图
+# 1.指令编码(硬编码)的结构图
 
 ![](/img/pic/opcode/1.jpg)
 
 详细表格见[Intel手册卷2 B————>APPENDIX A OPCODE MAP————>ONE, TWO, AND THREE-BYTE OPCODE MAPS]()
 
-#2.前缀指令 (分四组，最多四个，每组最多一个)
+# 2.前缀指令 (分四组，最多四个，每组最多一个)
 
 
 <1>  LOCK  和 REPEAT前缀指令：
 
 	LOCK     		F0    锁地址总线，多核同步使用
-	REPNE/REPNZ	    F2  EFLAGS ZF为0 重复执行
+	REPNE/REPNZ	      F2   EFLAGS ZF为0 重复执行
 	REP/REPZ		F3     EFLAGS ZF为1 重复执行
 
 <2>  段前缀指令：
@@ -38,7 +38,7 @@ tags:
 
 	67  改变CPU寻址方式 (32位←→16位 双向改变)
 
-#3.经典定长指令-修改寄存器ERX (ERX代表8个通用寄存器)
+# 3.经典定长指令-修改寄存器ERX (ERX代表8个通用寄存器)
 
 <1> PUSH/POP  （指令大小1byte）
 
@@ -78,7 +78,7 @@ tags:
 
 	0x90 - 0x97		XCHG EAX, ERX
 
-#4.经典定长指令-修改EIP
+# 4.经典定长指令-修改EIP
 
 **1、0x70 - 0x7F**
 
@@ -181,7 +181,7 @@ tags:
 
 	出栈8个字节，低4个字节赋值给EIP,高4个字节中低2位赋值给CS后，ESP = ESP + Iw 
 
-#5、经典变长指令-ModR/M字段
+# 5、经典变长指令-ModR/M字段
 
 下面以MOV的变长指令举例
 
