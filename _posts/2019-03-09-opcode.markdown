@@ -23,7 +23,7 @@ tags:
 <1>  LOCK  和 REPEAT前缀指令：
 
 	LOCK     		F0    锁地址总线，多核同步使用
-	REPNE/REPNZ	      F2   EFLAGS ZF为0 重复执行
+	REPNE/REPNZ	        F2   EFLAGS ZF为0 重复执行
 	REP/REPZ		F3     EFLAGS ZF为1 重复执行
 
 <2>  段前缀指令：
@@ -232,7 +232,7 @@ Mod(第6，7位)和R/M(第0，1，2位)共同描述指令中的E部分，即寄�
 2,EBP指向栈底，而[EBP]通常存储上一个EBP,所以[EBP]无数据操作意义，Intel将这个编码废弃，改为立即数寻址
 
 
-#6.经典定长指令-SIB字段
+# 6.经典定长指令-SIB字段
 
 ModR/M字段是用来是用来进行内存寻址的，可当地址形如DS:[EAX+ECX*2+12345678]时，仅仅靠ModR/M字段是描述不出来的。这时就在ModR/M后面增加一个SIB字节，与ModR/M字段共同描述。
 
