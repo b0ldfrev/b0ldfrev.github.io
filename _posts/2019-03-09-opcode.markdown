@@ -103,7 +103,7 @@ tags:
 	0x7E	JLE/JNG						
 	0x7F	JNLE/JG	
 
-**2、0x0F 0x80 - 0x0F 0x8F **
+**2、0x0F 0x80 - 0x0F 0x8F**
 
 <1> 条件跳转，后跟四个字节立即数的偏移(有符号)，共五个字节。
 <2> 如果条件成立，跳转到 当前指令地址 + 当前指令长度 + Id		
@@ -126,7 +126,7 @@ tags:
 	0x0F 0x8E		JLE/JNG				
 	0x0F 0x8F		JNLE/JG	
 
-**3、其他指令 **
+**3、其他指令**
 
 0xE0  	LOOPNE/LOOPNZ Ib (Jb)			共2字节
 
@@ -153,7 +153,7 @@ tags:
 
 	跳转到 当前指令地址 + 当前指令长度 + Id
 
-**4、其他指令 ** 
+**4、其他指令** 
 
 8个段寄存器： ES CS SS DS FS GS LDTR TR (顺序固定)
 					
@@ -248,7 +248,7 @@ ModR/M字段是用来是用来进行内存寻址的，可当地址形如DS:[EAX+
 
 所以SIB字段描述的方式为：
 
-**Base + Index \* 2^Scale (Scale描述2^Scale 所以只能为 \*1 \*2 \*4) **
+**Base + Index \* 2^Scale (Scale描述2^Scale 所以只能为 \*1 \*2 \*4)**
 
 下面我们通过分析指令，看看SIB是怎么工作的
 
