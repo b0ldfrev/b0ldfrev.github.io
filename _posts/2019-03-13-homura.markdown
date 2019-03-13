@@ -203,7 +203,7 @@ char *message; // malloc(0x90<=mem<=0x100f)
 
 1.利用Fast_bin的管理缺陷，利用UAF泄露堆地址。
 
-2.**在我审查了Unsorted_bin部分相关的源码后，发现它的摘链是从双向链表底部开始，且并没有检查bk指针的合法性，于是可以修改bk指针，申请到指向任意地址的堆块(需要伪造 防止再次申请到不合法地址而报错)**
+2.**在我审查了Unsorted_bin部分相关的源码后，发现它的摘链是从双向链表底部开始，且并没有检查bk指针的合法性，于是可以修改bk指针，申请到指向任意地址的堆块(伪造的堆块需要正确填入fd与bk 防止再次申请到不合法地址而报错)**
 
 如下图：
 
@@ -214,6 +214,50 @@ char *message; // malloc(0x90<=mem<=0x100f)
 ![](/img/pic/homura/2.jpg)
 
 all提示‘corrupted’这是gdb插件检测到的，虽然这样看起来破坏了unsortedbin双向链表，但实际上并不影响后续分配。
+
+相关源码：
+
+```c
+
+while ((victim = unsorted_chunks(av)->bk) != unsorted_chunks(av)) {
+    bck = victim->bk;
+    if (__builtin_expect(chunksize_nomask(victim) <= 2 * SIZE_SZ, 0) ||
+        __builtin_expect(chunksize_nomask(victim) > av->system_mem, 0))
+        malloc_printerr(check_action, "malloc(): memory corruption",
+                        chunk2mem(victim), av);
+    size = chunksize(victim);
+
+    /*
+       If a small request, try to use last remainder if it is the
+       only chunk in unsorted bin.  This helps promote locality for
+       runs of consecutive small requests. This is the only
+       exception to best-fit, and applies only when there is
+       no exact fit for a small chunk.
+     */
+    /* 大小满足small_bin,且为last remainder chunk(很多时候并不满足)*/
+    if (in_smallbin_range(nb) && bck == unsorted_chunks(av) &&
+        victim == av->last_remainder &&
+        (unsigned long) (size) > (unsigned long) (nb + MINSIZE)) {
+        ....
+    }
+
+    /* remove from unsorted list */
+    unsorted_chunks(av)->bk = bck;
+    bck->fd = unsorted_chunks(av);
+    
+    /* 请求的大小刚好为上面从unsorted list尾移除的chunk大小 */
+	if (size == nb) {
+		set_inuse_bit_at_offset(victim, size);
+		if (av != &main_arena)
+		victim->size |= NON_MAIN_ARENA;
+		check_malloced_chunk(av, victim, nb);
+		void *p =  chunk2mem(victim);
+		if ( __builtin_expect (perturb_byte, 0))
+		alloc_perturb (p, bytes);
+		return p;
+	}
+....
+```
 
 3.于是乎在合法堆块中伪造chunk，再申请到该chunk，同时就覆盖内存下方note结构的name指针为含有main_arena的堆地址，泄露libc地址
 
