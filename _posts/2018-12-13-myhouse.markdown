@@ -202,7 +202,7 @@ read(0, &owner, 0x20uLL);
 
 ![pic3]
 
-然后就可以利用House-of-force进行任意地址分配堆块，实现任意地址写，关于它的利用方式详见我的博文 [House of Force](https://sirhc.xyz/2018/11/24/house_of_force/)
+然后就可以利用House-of-force进行任意地址分配堆块，实现任意地址写，关于它的利用方式详见我的博文 [House of Force](https://sirhc.gitbook.io/note/pwn/house_of_force)
 
 接下来就是正常套路了，我们将堆块分别配到bss段上，控制下面这段内存：
 

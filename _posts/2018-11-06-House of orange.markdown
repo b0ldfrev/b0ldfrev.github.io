@@ -76,14 +76,14 @@ assert ((unsigned long) (old_size) < (unsigned long) (nb + MINSIZE));
 
 比如，在覆盖之前 top chunk 的 size 大小是 20fe1，top chunk地址为0x602020，通过计算得知 0x602020+0x20fe0=0x623000 是对于 0x1000（4kb）对齐的。
 
-在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的另一篇博文[https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
+在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的笔记[https://sirhc.gitbook.io/note/pwn/unsorted_bin_attack/](https://sirhc.gitbook.io/note/pwn/unsorted_bin_attack)
 
 <span id="FSOP"></span>
 # FSOP原理
 
 这里简单介绍一下FSOP
 
-FSOP 是 File Stream Oriented Programming 的缩写，根据前面对 [_IO_FILE利用思路总结](https://sirhc.xyz/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
+FSOP 是 File Stream Oriented Programming 的缩写，根据我之前对 [_IO_FILE利用思路总结](https://sirhc.gitbook.io/note/pwn/iofile-li-yong-si-lu-zong-jie) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
 
 FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的`_IO_FILE` 项，但是单纯的伪造只是构造了数据还需要某种方法进行触发。FSOP 选择的触发方法是调用`_IO_flush_all_lockp`，这个函数会刷新`_IO_list_all` 链表中所有项的文件流，相当于对每个 FILE 调用 fflush，也对应着会调用`_IO_FILE_plus.vtable` 中的`_IO_overflow`。
 
