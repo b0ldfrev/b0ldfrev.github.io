@@ -183,7 +183,7 @@ chunk 错了一下位 这是重中之重 unlink向前合并利用的关键
 
 #### 3.补充unlink向前合并操作知识
 
-* unlink详细介绍见我的博文 [Unlink原理](https://sirhc.gitbook.io/note/pwn/unlink)
+* unlink详细介绍见我的博文 [Unlink原理](https://b0ldfrev.gitbook.io/note/pwn/unlink)
 
 首先检测next chunk是否为free。那么如何检测呢？很简单，查询next chunk之后的chunk的 PREV_INUSE (P)即可。相关代码如下：
 

@@ -48,7 +48,7 @@ add(0x60,data)  ##这里用data覆盖 itemlist内容
 
 这样便覆盖了了itemlist的内容。
 
->[相关资料](https://sirhc.xyz/2018/09/04/Fast-bin-%E7%AC%94%E8%AE%B0/)
+>[相关资料](https://b0ldfrev.top/2018/09/04/Fast-bin-%E7%AC%94%E8%AE%B0/)
 
 
 2.再说说利用unlink的方法
@@ -131,7 +131,7 @@ remove(4) ## 触发system（“/bin/sh”）
 p.interactive()
 ```
 
->[相关资料](https://sirhc.xyz/2018/07/23/heap-unlink/)
+>[相关资料](https://b0ldfrev.top/2018/07/23/heap-unlink/)
 
 
 

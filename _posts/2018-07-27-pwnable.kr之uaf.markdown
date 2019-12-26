@@ -103,7 +103,7 @@ int main(int argc, char* argv[]){
 ```
 
 
-可以看到父类Human有虚函数give_shell和introduce，子类Man和Woman继承了父类并且重载了父类的introduce虚函数。有关虚函数虚表的概念，见我的这篇博文 [https://sirhc.xyz/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/](https://sirhc.xyz/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/) 
+可以看到父类Human有虚函数give_shell和introduce，子类Man和Woman继承了父类并且重载了父类的introduce虚函数。有关虚函数虚表的概念，见我的这篇博文 [https://b0ldfrev.top/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/](https://b0ldfrev.top/2018/07/25/C++-%E8%99%9A%E8%A1%A8%E5%88%86%E6%9E%90/) 
 
 ## 0x01 漏洞分析
 

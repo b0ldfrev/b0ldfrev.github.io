@@ -76,14 +76,14 @@ assert ((unsigned long) (old_size) < (unsigned long) (nb + MINSIZE));
 
 比如，在覆盖之前 top chunk 的 size 大小是 20fe1，top chunk地址为0x602020，通过计算得知 0x602020+0x20fe0=0x623000 是对于 0x1000（4kb）对齐的。
 
-在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的笔记[https://sirhc.gitbook.io/note/pwn/unsorted_bin_attack/](https://sirhc.gitbook.io/note/pwn/unsorted_bin_attack)
+在top chunk进入unsorted bin之后，我们就可以利用`unsorted bin attack`来修改`_IO_list_all`指向我们伪造的`_IO_FILE`，进入下一步攻击。关于`unsorted bin attack `的知识点,详见我的笔记[https://b0ldfrev.gitbook.io/note/pwn/unsorted_bin_attack/](https://b0ldfrev.gitbook.io/note/pwn/unsorted_bin_attack)
 
 <span id="FSOP"></span>
 # FSOP原理
 
 这里简单介绍一下FSOP
 
-FSOP 是 File Stream Oriented Programming 的缩写，根据我之前对 [_IO_FILE利用思路总结](https://sirhc.gitbook.io/note/pwn/iofile-li-yong-si-lu-zong-jie) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
+FSOP 是 File Stream Oriented Programming 的缩写，根据我之前对 [_IO_FILE利用思路总结](https://b0ldfrev.gitbook.io/note/pwn/iofile-li-yong-si-lu-zong-jie) 得知进程内所有的`_IO_FILE` 结构会使用`_chain` 域相互连接形成一个链表，这个链表的头部由`_IO_list_all` 维护。
 
 FSOP 的核心思想就是劫持`_IO_list_all` 的值来伪造链表和其中的`_IO_FILE` 项，但是单纯的伪造只是构造了数据还需要某种方法进行触发。FSOP 选择的触发方法是调用`_IO_flush_all_lockp`，这个函数会刷新`_IO_list_all` 链表中所有项的文件流，相当于对每个 FILE 调用 fflush，也对应着会调用`_IO_FILE_plus.vtable` 中的`_IO_overflow`。
 
@@ -568,7 +568,7 @@ log.info('heap_base:'+hex(heap_base))
 ```
 ###### 3.UnsortedBin attack 与 FSOP
 
-UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://sirhc.xyz/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
+UnsortedBin Attack的原理见我的[Unsorted Bin Attack 笔记](https://b0ldfrev.top/2018/09/06/Unsorted-Bin-Attack-%E7%AC%94%E8%AE%B0/)
 
 `_IO_FILE`相关的`FSOP`的原理见[FSOP原理](#FSOP)
 
@@ -613,7 +613,7 @@ io.sendline(str(1))
 
 ###### 4.libc_2.24下的利用
 
-参考资料见我的[_IO_FILE利用思路总结](https://sirhc.xyz/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/)
+参考资料见我的[_IO_FILE利用思路总结](https://b0ldfrev.top/2018/12/07/_IO_FILE%E5%88%A9%E7%94%A8%E6%80%9D%E8%B7%AF%E6%80%BB%E7%BB%93/)
 
 与libc2.23及以下的利用方式有点差距，主要是我们这里利用`__IO_str_jumps`中的`_IO_str_overflow`函数，我们不仅要绕过之前的`_IO_flush_all_lockp`检查，也要绕过`__IO_str_overflow`函数对`_IO_FILE`结构的检查，详细见exp
 
