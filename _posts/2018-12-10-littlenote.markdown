@@ -3,7 +3,7 @@ layout:     post
 title:      "铁三2018全国总决赛之littlenote"
 subtitle:   "double free +堆块伪造 "
 date:       2018-12-10 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn
@@ -17,8 +17,8 @@ tags:
 ## checksec
 
 ```shell
-chris@ubuntu:~/Pwn$ checksec littlenote
-[*] '/home/chris/Pwn/littlenote'
+b0ldfrev@ubuntu:~/Pwn$ checksec littlenote
+[*] '/home/b0ldfrev/Pwn/littlenote'
     Arch:     amd64-64-little
     RELRO:    Full RELRO
     Stack:    Canary found

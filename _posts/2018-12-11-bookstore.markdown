@@ -3,7 +3,7 @@ layout:     post
 title:      "铁三2018全国总决赛之bookstore"
 subtitle:   " fastbin attack + 整数溢出 "
 date:       2018-12-11 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn
@@ -13,8 +13,8 @@ tags:
 ## checksec
 
 ```shell
-chris@ubuntu:~$ checksec myhouse
-[*] '/home/chris/myhouse'
+b0ldfrev@ubuntu:~$ checksec myhouse
+[*] '/home/b0ldfrev/myhouse'
     Arch:     amd64-64-little
     RELRO:    Partial RELRO
     Stack:    Canary found

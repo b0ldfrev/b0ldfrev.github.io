@@ -3,7 +3,7 @@ layout:     post
 title:      "2018铁三东北赛区之aleph1"
 subtitle:   "rbp栈迁移"
 date:       2018-06-16 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn

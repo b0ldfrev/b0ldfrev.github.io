@@ -3,7 +3,7 @@ layout:     post
 title:      "360春秋杯之smallest"
 subtitle:   "SROP利用"
 date:       2018-08-11 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn

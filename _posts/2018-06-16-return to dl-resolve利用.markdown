@@ -3,7 +3,7 @@ layout:     post
 title:      "return to dl-resolve利用"
 subtitle:   "i386 roputils库"
 date:       2018-06-16 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn

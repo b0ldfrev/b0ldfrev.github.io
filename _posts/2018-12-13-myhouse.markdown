@@ -3,7 +3,7 @@ layout:     post
 title:      "铁三2018全国总决赛之myhouse"
 subtitle:   "House of force+ 任意地址写1null "
 date:       2018-12-13 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn
@@ -13,7 +13,7 @@ tags:
 ## checksec
 
 ```python
-[*] '/home/chris/myhouse'
+[*] '/home/b0ldfrev/myhouse'
     Arch:     amd64-64-little
     RELRO:    Partial RELRO
     Stack:    Canary found

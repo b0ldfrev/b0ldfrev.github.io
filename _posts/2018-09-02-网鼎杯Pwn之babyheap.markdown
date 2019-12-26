@@ -3,7 +3,7 @@ layout:     post
 title:      "网鼎杯Pwn之babyheap"
 subtitle:   " unlink+uaf+fastbin attack "
 date:       2018-09-02 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn
@@ -16,7 +16,7 @@ tags:
 1，检查保护
 
 ```python
-[*] '/home/chris/Pwn/babyheap'
+[*] '/home/b0ldfrev/Pwn/babyheap'
     Arch:     amd64-64-little
     RELRO:    Full RELRO
     Stack:    Canary found

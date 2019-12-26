@@ -1,10 +1,10 @@
 ﻿# Site settings
-title: Chris's Blog
-SEOTitle: Chris's Blog
+title: b0ldfrev's Blog
+SEOTitle: b0ldfrev's Blog
 header-img: img/home-bg.jpg
 email: b0ldfrev@gmail.com
 description: "没有绝对安全的系统"
-keyword: " Chris's Blog, 博客, 个人网站, windows，linux，安全, 二进制, 逆向, pwn"
+keyword: " b0ldfrev's Blog, 博客, 个人网站, windows，linux，安全, 二进制, 逆向, pwn"
 url: "https://yxshyj.github.io"              # your host, for absolute URL
 baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
 
@@ -50,7 +50,7 @@ kramdown:
 
 
 # Disqus settings
-disqus_username: Chris
+disqus_username: b0ldfrev
 
 # Netease setttings
 netease_comment: false

@@ -3,7 +3,7 @@ layout:     post
 title:      "small bin attack"
 subtitle:   "关于smallbin的利用"
 date:       2019-09-20 11:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn

@@ -3,7 +3,7 @@ layout:     post
 title:      "南邮NCTF2018之smallbug2"
 subtitle:   "X64 FmtStr"
 date:       2018-11-26 12:00:00
-author:     "Chris"
+author:     "b0ldfrev"
 catalog: true
 tags:
     - Pwn
